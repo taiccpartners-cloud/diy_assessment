@@ -7,6 +7,13 @@ import json
 from io import BytesIO
 from PIL import Image
 
+import os
+import json
+
+file_path = os.path.join(os.path.dirname(__file__), "questions_full.json")
+with open(file_path, "r") as f:
+    questions = json.load(f)
+
 # --- CONFIGURATION ---
 st.set_page_config(page_title="TAICC AI Readiness", layout="wide", page_icon="🤖")
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -30,8 +37,8 @@ readiness_levels = [
 ]
 
 # Load questions from JSON
-with open("questions_full.json", "r") as f:
-    questions = json.load(f)
+#with open("questions_full.json", "r") as f:
+    #questions = json.load(f)
 
 # Extract domain and tier lists from JSON
 domains = list(questions.keys())
