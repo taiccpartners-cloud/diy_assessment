@@ -119,7 +119,7 @@ def login_screen():
             st.session_state.page = "questions"
 
 def question_screen():
-    st.sidebar.image("/Users/adityaacharya/Downloads/WhatsApp Image 2024-10-04 at 21.28.38.jpeg", width=120)
+    #st.sidebar.image("/Users/adityaacharya/Downloads/WhatsApp Image 2024-10-04 at 21.28.38.jpeg", width=120)
     st.sidebar.title("TAICC")
     st.sidebar.markdown("AI Transformation Partner")
     st.title("🧠 AI Readiness Assessment")
