@@ -223,3 +223,21 @@ elif st.session_state.page == "questions":
     question_screen()
 elif st.session_state.page == "results":
     results_screen()
+
+import streamlit as st
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# Define scope
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+# Load credentials from Streamlit secrets
+creds = ServiceAccountCredentials.from_json_keyfile_dict(
+    st.secrets["gcp_service_account"], scope
+)
+
+# Authorize client
+client = gspread.authorize(creds)
+
+# Open Google Sheet
+sheet = client.open("AI_Readiness_Data").sheet1
