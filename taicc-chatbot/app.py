@@ -92,7 +92,7 @@ if "page" not in st.session_state:
 
 # --- UI FUNCTIONS ---
 def login_screen():
-    st.image("https://postimg.cc/8ssq5R10", width=150)
+    st.image("https://i.postimg.cc/441ZWPjs/Whats-App-Image-2025-02-20-at-11-29-36.jpg", width=150)
     st.title("TAICC AI Readiness Assessment")
     st.markdown("Fill out your details to begin the assessment.")
 
