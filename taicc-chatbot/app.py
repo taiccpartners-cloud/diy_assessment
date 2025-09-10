@@ -7,6 +7,7 @@ import json
 from io import BytesIO
 from PIL import Image
 import os
+import requests
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
