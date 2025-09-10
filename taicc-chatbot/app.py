@@ -92,8 +92,8 @@ if "page" not in st.session_state:
 
 # --- UI FUNCTIONS ---
 def login_screen():
-    st.image("https://i.imgur.com/hY3lYkE.png", width=150)
-    st.title("🤖 TAICC AI Readiness Assessment")
+    st.image("https://postimg.cc/8ssq5R10", width=150)
+    st.title("TAICC AI Readiness Assessment")
     st.markdown("Fill out your details to begin the assessment.")
 
     with st.form("user_details_form"):
@@ -122,7 +122,7 @@ def question_screen():
     #st.sidebar.image("/Users/adityaacharya/Downloads/WhatsApp Image 2024-10-04 at 21.28.38.jpeg", width=120)
     st.sidebar.title("TAICC")
     st.sidebar.markdown("AI Transformation Partner")
-    st.title("🧠 AI Readiness Assessment")
+    st.title("AI Readiness Assessment")
     st.markdown("Rate your organization on these factors.")
 
     domain = st.session_state.selected_domain
@@ -203,7 +203,7 @@ def download_pdf(report_text, maturity):
     pdf_bytes = pdf.output(dest="S").encode("latin-1")
 
     st.download_button(
-        label="📥 Download Full Professional Report (PDF)",
+        label="Download Full Professional Report (PDF)",
         data=pdf_bytes,
         file_name="TAICC_AI_Readiness_Report.pdf",
         mime="application/pdf"
