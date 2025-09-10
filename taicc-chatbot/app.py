@@ -7,37 +7,24 @@ import json
 from io import BytesIO
 from PIL import Image
 import os
-import json
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+# -----------------------------
+# --- CONFIGURATION & SETUP ---
+# -----------------------------
+# Load questions JSON
 file_path = os.path.join(os.path.dirname(__file__), "questions_full.json")
 with open(file_path, "r") as f:
     questions = json.load(f)
 
-# --- CONFIGURATION ---
+# Streamlit page config
 st.set_page_config(page_title="TAICC AI Readiness", layout="wide", page_icon="🤖")
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-# Google Sheets setup
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_dict(
-    st.secrets["gcp_service_account"], scope
-)
-client = gspread.authorize(creds)
-sheet = client.open(st.secrets["SHEET_NAME"]).sheet1
-
-# Score mapping
-score_map = {
-    "Not at all": 1,
-    "Slightly": 2,
-    "Moderately": 3,
-    "Very": 4,
-    "Fully": 5
-}
-
-# Readiness levels
+# Score mapping and readiness levels
+score_map = {"Not at all": 1, "Slightly": 2, "Moderately": 3, "Very": 4, "Fully": 5}
 readiness_levels = [
     (0, 1.0, "Beginner"),
     (1.1, 2.0, "Emerging"),
@@ -46,11 +33,56 @@ readiness_levels = [
     (4.1, 5.0, "AI Leader")
 ]
 
-# Extract domain and tier lists from JSON
+# Extract domains and tiers from JSON
 domains = list(questions.keys())
-tiers = list(next(iter(questions.values())).keys())
+tiers = list(next(iter(questions.values())).keys())  # assumes all domains have same tiers
 
-# --- SESSION STATE ---
+# Domain and Tier explanations
+domain_explanations = {
+    "BFSI": "Banking, Financial Services, and Insurance including NBFCs, Co-op Banks, Stock Broking, and more",
+    "Manufacturing": "Industries such as Automobiles, Textiles, and Machinery",
+    "Healthcare": "Hospitals, diagnostics, health-tech platforms, and telemedicine",
+    "Hospitality": "Hotels, resorts, restaurants, and travel accommodations",
+    "Pharma": "Pharmaceutical research, biotech, and medicine production",
+    "Travel and Tourism": "Tour operators, online travel platforms, airlines, etc.",
+    "Construction": "Infrastructure, civil engineering, and public works",
+    "Real Estate": "Residential and commercial property development and sales",
+    "Education & EdTech": "Schools, universities, online learning platforms",
+    "Retail & E-commerce": "Retail chains, marketplaces, and D2C brands",
+    "Logistics & Supply Chain": "Warehousing, distribution, and delivery services",
+    "Agritech": "Smart farming, agri-inputs, and precision agriculture",
+    "IT & ITES": "Software companies, IT services, and BPOs",
+    "Legal & Compliance": "Law firms, compliance tools, and contract automation",
+    "Energy & Utilities": "Power generation, oil & gas, renewables",
+    "Telecommunications": "Network providers, internet services, and 5G tech",
+    "Media & Entertainment": "Broadcasting, streaming platforms, and gaming",
+    "PropTech": "Real estate technology platforms",
+    "FMCG & Consumer Goods": "Packaged goods and fast-moving consumer brands",
+    "Public Sector": "Government departments, PSUs, and public welfare",
+    "Automotive": "OEMs, auto ancillaries, and connected vehicles",
+    "Environmental & Sustainability": "Climate tech, carbon tracking, and ESG",
+    "Smart Cities": "Urban tech, IoT infrastructure, and city planning"
+}
+
+tier_explanations = {
+    "Tier 1": "Enterprise Leaders – Large organizations with significant AI investments and robust strategies.",
+    "Tier 2": "Strategic Innovators – Established companies actively experimenting and implementing AI.",
+    "Tier 3": "Growth Enablers – Mid-sized firms beginning structured AI adoption efforts.",
+    "Tier 4": "Agile Starters – Startups or small businesses with a high willingness to explore AI.",
+    "Tier 5": "Traditional Operators – Individuals or firms with minimal or no current AI engagement."
+}
+
+# -----------------------------
+# --- GOOGLE SHEETS SETUP ---
+# -----------------------------
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
+client = gspread.authorize(creds)
+sheet = client.open(st.secrets["SHEET_NAME"]).sheet1
+
+# -----------------------------
+# --- SESSION STATE SETUP ---
+# -----------------------------
 if "page" not in st.session_state:
     st.session_state.page = "login"
     st.session_state.answers = {}
@@ -60,7 +92,9 @@ if "page" not in st.session_state:
     st.session_state.selected_tier = ""
     st.session_state.start_time = datetime.now()
 
+# -----------------------------
 # --- UI FUNCTIONS ---
+# -----------------------------
 def login_screen():
     st.image("https://i.postimg.cc/441ZWPjs/Whats-App-Image-2025-02-20-at-11-29-36.jpg", width=150)
     st.title("TAICC AI Readiness Assessment")
@@ -72,8 +106,8 @@ def login_screen():
         email = st.text_input("Email Address")
         phone = st.text_input("Phone Number")
 
-        domain = st.selectbox("Select Your Domain", domains)
-        tier = st.selectbox("Select Your Tier", tiers)
+        domain = st.selectbox("Select Your Domain", domains, format_func=lambda x: f"{x} - {domain_explanations.get(x, '')}")
+        tier = st.selectbox("Select Your Tier", tiers, format_func=lambda x: f"{x} - {tier_explanations.get(x, '')}")
 
         submitted = st.form_submit_button("Start Assessment")
 
@@ -88,6 +122,7 @@ def login_screen():
             st.session_state.selected_tier = tier
             st.session_state.page = "questions"
 
+
 def question_screen():
     st.sidebar.title("TAICC")
     st.sidebar.markdown("AI Transformation Partner")
@@ -98,31 +133,30 @@ def question_screen():
     tier = st.session_state.selected_tier
     questions_for_tier = questions[domain][tier]
 
-    answered = 0
-    total_questions = len(questions_for_tier)
-
     for idx, q in enumerate(questions_for_tier):
         key = f"Q{idx}-{q}"
         val = st.radio(q, list(score_map.keys()), key=key)
         st.session_state.answers[key] = score_map[val]
-        answered += 1
 
-    progress = int((answered / total_questions) * 100)
+    progress = int(len(st.session_state.answers) / len(questions_for_tier) * 100)
     st.progress(progress)
 
     if st.button("Submit"):
         st.session_state.page = "results"
+
 
 def calculate_scores():
     values = list(st.session_state.answers.values())
     avg = round(sum(values) / len(values), 2)
     st.session_state.section_scores = {"Overall Score": avg}
 
+
 def determine_maturity(avg):
     for low, high, label in readiness_levels:
         if low <= avg <= high:
             return label
     return "Undefined"
+
 
 def generate_professional_summary():
     avg = list(st.session_state.section_scores.values())[0]
@@ -135,15 +169,18 @@ def generate_professional_summary():
     - Key weaknesses or challenges organizations at this level face
     - Practical recommendations for improvement
     - A concluding call to action encouraging to partner with TAICC for AI transformation support.
+    Write in clear professional language suitable for a business report.
     """
 
     model = genai.GenerativeModel("gemini-1.5-flash")
     response = model.generate_content(prompt)
     return maturity, response.text.strip()
 
+
 def download_pdf(report_text, maturity):
     pdf = FPDF()
     pdf.add_page()
+
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "TAICC AI Readiness Assessment Report", ln=True, align="C")
     pdf.ln(10)
@@ -158,6 +195,7 @@ def download_pdf(report_text, maturity):
     pdf.ln(10)
 
     pdf.multi_cell(0, 8, report_text.encode('latin-1', 'replace').decode('latin-1'))
+
     pdf.ln(10)
     pdf.set_font("Arial", 'I', 10)
     pdf.cell(0, 10, "Report generated by TAICC AI Readiness Assessment Tool", ln=True, align="C")
@@ -170,6 +208,7 @@ def download_pdf(report_text, maturity):
         mime="application/pdf"
     )
 
+
 def show_maturity_levels():
     st.markdown("### AI Maturity Levels Explained")
     df_levels = pd.DataFrame([
@@ -180,6 +219,7 @@ def show_maturity_levels():
         {"Score Range": "4.1 - 5.0", "Level": "AI Leader", "Description": "Industry-leading AI innovation and scale."},
     ])
     st.table(df_levels)
+
 
 def results_screen():
     calculate_scores()
@@ -197,7 +237,9 @@ def results_screen():
 
     download_pdf(detailed_report, maturity)
 
-    # ✅ Save results to Google Sheets
+    # -----------------------------
+    # --- SAVE TO GOOGLE SHEETS ---
+    # -----------------------------
     try:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         row = [
@@ -208,7 +250,7 @@ def results_screen():
             st.session_state.user_data.get("Phone", ""),
             st.session_state.selected_domain,
             st.session_state.selected_tier,
-            list(st.session_state.section_scores.values())[0],  # Overall Score
+            list(st.session_state.section_scores.values())[0],
             maturity
         ]
         sheet.append_row(row)
@@ -216,28 +258,12 @@ def results_screen():
     except Exception as e:
         st.error(f"❌ Could not save to Google Sheets: {e}")
 
+# -----------------------------
 # --- ROUTER ---
+# -----------------------------
 if st.session_state.page == "login":
     login_screen()
 elif st.session_state.page == "questions":
     question_screen()
 elif st.session_state.page == "results":
     results_screen()
-
-import streamlit as st
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-
-# Define scope
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-
-# Load credentials from Streamlit secrets
-creds = ServiceAccountCredentials.from_json_keyfile_dict(
-    st.secrets["gcp_service_account"], scope
-)
-
-# Authorize client
-client = gspread.authorize(creds)
-
-# Open Google Sheet
-sheet = client.open("AI_Readiness_Data").sheet1
