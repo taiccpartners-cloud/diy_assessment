@@ -6,10 +6,14 @@ import google.generativeai as genai
 import json
 from io import BytesIO
 from PIL import Image
-
 import os
 import json
 
+# 🔹 NEW: Add Google Sheets libs
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# --- LOAD QUESTIONS ---
 file_path = os.path.join(os.path.dirname(__file__), "questions_full.json")
 with open(file_path, "r") as f:
     questions = json.load(f)
@@ -36,49 +40,34 @@ readiness_levels = [
     (4.1, 5.0, "AI Leader")
 ]
 
-# Load questions from JSON
-#with open("questions_full.json", "r") as f:
-    #questions = json.load(f)
-
 # Extract domain and tier lists from JSON
 domains = list(questions.keys())
 tiers = list(next(iter(questions.values())).keys())  # assumes all domains have same tiers
 
-# Domain and Tier explanations
-domain_explanations = {
-    "BFSI": "Banking, Financial Services, and Insurance including NBFCs, Co-op Banks, Stock Broking, and more",
-    "Manufacturing": "Industries such as Automobiles, Textiles, and Machinery",
-    "Healthcare": "Hospitals, diagnostics, health-tech platforms, and telemedicine",
-    "Hospitality": "Hotels, resorts, restaurants, and travel accommodations",
-    "Pharma": "Pharmaceutical research, biotech, and medicine production",
-    "Travel and Tourism": "Tour operators, online travel platforms, airlines, etc.",
-    "Construction": "Infrastructure, civil engineering, and public works",
-    "Real Estate": "Residential and commercial property development and sales",
-    "Education & EdTech": "Schools, universities, online learning platforms",
-    "Retail & E-commerce": "Retail chains, marketplaces, and D2C brands",
-    "Logistics & Supply Chain": "Warehousing, distribution, and delivery services",
-    "Agritech": "Smart farming, agri-inputs, and precision agriculture",
-    "IT & ITES": "Software companies, IT services, and BPOs",
-    "Legal & Compliance": "Law firms, compliance tools, and contract automation",
-    "Energy & Utilities": "Power generation, oil & gas, renewables",
-    "Telecommunications": "Network providers, internet services, and 5G tech",
-    "Media & Entertainment": "Broadcasting, streaming platforms, and gaming",
-    "PropTech": "Real estate technology platforms",
-    "FMCG & Consumer Goods": "Packaged goods and fast-moving consumer brands",
-    "Public Sector": "Government departments, PSUs, and public welfare",
-    "Automotive": "OEMs, auto ancillaries, and connected vehicles",
-    "Environmental & Sustainability": "Climate tech, carbon tracking, and ESG",
-    "Smart Cities": "Urban tech, IoT infrastructure, and city planning"
-}
+# --- GOOGLE SHEETS SETUP --- 🔹 NEW
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
+client = gspread.authorize(creds)
 
-tier_explanations = {
-    "Tier 1": "Enterprise Leaders – Large organizations with significant AI investments and robust strategies.",
-    "Tier 2": "Strategic Innovators – Established companies actively experimenting and implementing AI.",
-    "Tier 3": "Growth Enablers – Mid-sized firms beginning structured AI adoption efforts.",
-    "Tier 4": "Agile Starters – Startups or small businesses with a high willingness to explore AI.",
-    "Tier 5": "Traditional Operators – Individuals or firms with minimal or no current AI engagement."
-}
+# Open your sheet (replace with your sheet name or Spreadsheet ID)
+SHEET_NAME = "TAICC AI Readiness Data"
+sheet = client.open(SHEET_NAME).sheet1
 
+def save_to_gsheet(user_data, answers, score, maturity):
+    """Append results to Google Sheets"""
+    row = [
+        user_data.get("Name"),
+        user_data.get("Company"),
+        user_data.get("Email"),
+        user_data.get("Phone"),
+        st.session_state.selected_domain,
+        st.session_state.selected_tier,
+        json.dumps(answers),  # Store answers as JSON
+        score,
+        maturity,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ]
+    sheet.append_row(row)
 
 # --- SESSION STATE ---
 if "page" not in st.session_state:
@@ -102,8 +91,8 @@ def login_screen():
         email = st.text_input("Email Address")
         phone = st.text_input("Phone Number")
 
-        domain = st.selectbox("Select Your Domain", domains, format_func=lambda x: f"{x} - {domain_explanations.get(x, '')}")
-        tier = st.selectbox("Select Your Tier", tiers, format_func=lambda x: f"{x} - {tier_explanations.get(x, '')}")
+        domain = st.selectbox("Select Your Domain", domains)
+        tier = st.selectbox("Select Your Tier", tiers)
 
         submitted = st.form_submit_button("Start Assessment")
 
@@ -119,7 +108,6 @@ def login_screen():
             st.session_state.page = "questions"
 
 def question_screen():
-    #st.sidebar.image("/Users/adityaacharya/Downloads/WhatsApp Image 2024-10-04 at 21.28.38.jpeg", width=120)
     st.sidebar.title("TAICC")
     st.sidebar.markdown("AI Transformation Partner")
     st.title("AI Readiness Assessment")
@@ -167,8 +155,6 @@ def generate_professional_summary():
     - Key weaknesses or challenges organizations at this level face
     - Practical recommendations for improvement
     - A concluding call to action encouraging to partner with TAICC for AI transformation support.
-
-    Write in clear professional language suitable for a business report.
     """
 
     model = genai.GenerativeModel("gemini-1.5-flash")
@@ -184,7 +170,6 @@ def download_pdf(report_text, maturity):
     pdf.ln(10)
 
     pdf.set_font("Arial", size=12)
-    # User Details
     pdf.cell(0, 8, "User Details:", ln=True)
     for k, v in st.session_state.user_data.items():
         pdf.cell(0, 8, f"{k}: {v}", ln=True)
@@ -194,12 +179,10 @@ def download_pdf(report_text, maturity):
     pdf.ln(10)
 
     pdf.multi_cell(0, 8, report_text.encode('latin-1', 'replace').decode('latin-1'))
-
     pdf.ln(10)
     pdf.set_font("Arial", 'I', 10)
-    pdf.cell(0, 10, "Report generated by TAICC AI Readiness Assessment Tool", ln=True, align="C")
+    pdf.cell(0, 10, "Report generated by TAICC AI Readiness Tool", ln=True, align="C")
 
-    # ✅ FIX: get PDF as bytes instead of writing to file
     pdf_bytes = pdf.output(dest="S").encode("latin-1")
 
     st.download_button(
@@ -230,14 +213,20 @@ def results_screen():
     st.success(f"Your AI Maturity Level: **{maturity}**")
     st.markdown(detailed_report)
 
-    show_maturity_levels()  # Call the function here, no colon!
+    show_maturity_levels()
 
     time_taken = datetime.now() - st.session_state.start_time
     st.caption(f"⏱️ Time taken: {time_taken.seconds // 60} min {time_taken.seconds % 60} sec")
 
     download_pdf(detailed_report, maturity)
 
-
+    # 🔹 NEW: Save to Google Sheets
+    save_to_gsheet(
+        st.session_state.user_data,
+        st.session_state.answers,
+        list(st.session_state.section_scores.values())[0],
+        maturity
+    )
 
 # --- ROUTER ---
 if st.session_state.page == "login":
