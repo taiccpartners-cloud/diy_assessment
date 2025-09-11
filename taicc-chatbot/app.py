@@ -11,6 +11,14 @@ import requests
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import razorpay
+
+# Razorpay Test Credentials
+RAZORPAY_KEY_ID = "rzp_test_RGEMU8juHeSLYL"
+RAZORPAY_KEY_SECRET = "WseFgOL3r58nxWdv6g2dyOQa"
+
+# Initialize Razorpay client
+razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 # -----------------------------
 # --- CONFIGURATION & SETUP ---
@@ -92,6 +100,44 @@ if "page" not in st.session_state:
     st.session_state.selected_domain = ""
     st.session_state.selected_tier = ""
     st.session_state.start_time = datetime.now()
+    st.session_state.paid = False  # <-- NEW: track if user has paid
+
+# -----------------------------
+# --- PAYMENT FUNCTION ---
+# -----------------------------
+def payment_screen():
+    st.subheader(" Payment Required")
+    st.write("Please complete the payment of **₹199** to continue to the assessment.")
+
+    # Razorpay Order (test mode)
+    order = razorpay_client.order.create({
+        "amount": 19900,   # in paise (₹199)
+        "currency": "INR",
+        "payment_capture": 1
+    })
+
+    # Razorpay Checkout Script
+    payment_html = f"""
+    <form>
+      <script src="https://checkout.razorpay.com/v1/checkout.js"
+              data-key="{RAZORPAY_KEY_ID}"
+              data-amount="{order['amount']}"
+              data-currency="INR"
+              data-order_id="{order['id']}"
+              data-buttontext="Pay ₹199"
+              data-name="TAICC Partners"
+              data-description="AI Readiness Assessment"
+              data-theme.color="#3399cc">
+      </script>
+    </form>
+    """
+
+    st.markdown(payment_html, unsafe_allow_html=True)
+
+    st.info("After completing payment, click the button below.")
+    if st.button("✅ I have completed payment"):
+        st.session_state.paid = True
+        st.session_state.page = "questions"
 
 # -----------------------------
 # --- UI FUNCTIONS ---
@@ -299,7 +345,15 @@ def results_screen():
 # -----------------------------
 if st.session_state.page == "login":
     login_screen()
+elif st.session_state.page == "payment":
+    payment_screen()
 elif st.session_state.page == "questions":
-    question_screen()
+    if st.session_state.paid:
+        question_screen()
+    else:
+        payment_screen()
 elif st.session_state.page == "results":
-    results_screen()
+    if st.session_state.paid:
+        results_screen()
+    else:
+        payment_screen()
