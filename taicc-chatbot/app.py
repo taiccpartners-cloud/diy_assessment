@@ -109,21 +109,24 @@ def payment_screen():
     st.subheader(" Payment Required")
     st.write("Please complete the payment of **₹199** to continue to the assessment.")
 
-    # Razorpay Order (test mode)
-    order = razorpay_client.order.create({
-        "amount": 19900,   # in paise (₹199)
-        "currency": "INR",
-        "payment_capture": 1
-    })
+    # Create order only once
+    if "order_id" not in st.session_state:
+        order = razorpay_client.order.create({
+            "amount": 19900,   # in paise (₹199)
+            "currency": "INR",
+            "payment_capture": 1
+        })
+        st.session_state["order_id"] = order["id"]
+        st.session_state["order_amount"] = order["amount"]
 
     # Razorpay Checkout Script
     payment_html = f"""
     <form>
       <script src="https://checkout.razorpay.com/v1/checkout.js"
               data-key="{RAZORPAY_KEY_ID}"
-              data-amount="{order['amount']}"
+              data-amount="{st.session_state['order_amount']}"
               data-currency="INR"
-              data-order_id="{order['id']}"
+              data-order_id="{st.session_state['order_id']}"
               data-buttontext="Pay ₹199"
               data-name="TAICC Partners"
               data-description="AI Readiness Assessment"
@@ -138,6 +141,7 @@ def payment_screen():
     if st.button("✅ I have completed payment"):
         st.session_state.paid = True
         st.session_state.page = "questions"
+
 
 # -----------------------------
 # --- UI FUNCTIONS ---
@@ -167,7 +171,7 @@ def login_screen():
             }
             st.session_state.selected_domain = domain
             st.session_state.selected_tier = tier
-            st.session_state.page = "questions"
+            st.session_state.page = "payment"
 
 
 def question_screen():
