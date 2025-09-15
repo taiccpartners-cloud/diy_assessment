@@ -119,9 +119,11 @@ import streamlit.components.v1 as components
 
 def payment_screen():
     import streamlit.components.v1 as components
+
     st.subheader("💳 Payment Required")
     st.write("Please complete the payment of **₹199** to continue to the assessment.")
-    # Order creation: safe for reloads
+
+    # Create Razorpay order only once
     if "order_id" not in st.session_state:
         order = razorpay_client.order.create({
             "amount": 19900,
@@ -130,10 +132,11 @@ def payment_screen():
         })
         st.session_state["order_id"] = order["id"]
         st.session_state["order_amount"] = order["amount"]
-    # Payment widget
-    payment_html = f"""<html>
-    <head>
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script></head>
+
+    # Razorpay payment widget HTML/JS
+    payment_html = f"""
+    <html>
+    <head><script src="https://checkout.razorpay.com/v1/checkout.js"></script></head>
     <body>
     <script>
         var options = {{
@@ -144,7 +147,7 @@ def payment_screen():
             "description": "AI Readiness Assessment",
             "order_id": "{st.session_state['order_id']}",
             "theme": {{ "color": "#3399cc" }},
-            "handler": function (response) {{
+            "handler": function(response) {{
                 window.parent.postMessage({{
                     "razorpay_payment_id": response.razorpay_payment_id,
                     "razorpay_order_id": response.razorpay_order_id,
@@ -152,7 +155,7 @@ def payment_screen():
                 }}, "*");
             }},
             "method": {{
-                "upi": true,"card": true, "netbanking": true, "wallet": true
+                "upi": true, "card": true, "netbanking": true, "wallet": true
             }}
         }};
         var rzp1 = new Razorpay(options);
@@ -160,8 +163,8 @@ def payment_screen():
     </script></body></html>
     """
     components.html(payment_html, height=650)
-    
-    # JS for communicating with Streamlit
+
+    # JS to listen for payment data and update URL params to trigger verification
     success_js = """
     <script>
     window.addEventListener("message", (event) => {
@@ -170,17 +173,16 @@ def payment_screen():
             url.searchParams.set("payment_id", event.data.razorpay_payment_id);
             url.searchParams.set("order_id", event.data.razorpay_order_id);
             url.searchParams.set("signature", event.data.razorpay_signature);
-            url.searchParams.set("page", "questions");
+            url.searchParams.set("page", "payment");  // Keep here to stay on payment for verification
             window.location.replace(url.toString());
         }
     });
     </script>
     """
     st.markdown(success_js, unsafe_allow_html=True)
-    
-    # Read payment query params
+
+    # Verify payment from URL query params
     params = st.query_params
-    paid = False
     if "payment_id" in params and "order_id" in params and "signature" in params:
         payment_id = params.get("payment_id", [""])[0]
         order_id = params.get("order_id", [""])[0]
@@ -191,27 +193,19 @@ def payment_screen():
                 "razorpay_payment_id": payment_id,
                 "razorpay_signature": signature
             })
-            paid = True
             st.success("✅ Payment verified successfully!")
-            # Button for user to continue after payment success
+
+            # Button user clicks to continue after payment
             if st.button("➡️ Continue to Assessment"):
-            st.session_state.paid = True
-            st.session_state.page = "questions"
-            import streamlit.runtime.scriptrunner.script_runner as sr
-            import streamlit.runtime.scriptrunner.script_request_queue as srq
-            raise sr.RerunException(srq.RerunData(None))
+                st.session_state.paid = True
+                st.session_state.page = "questions"
+                st.experimental_rerun()
 
-        except Exception as ex:
+        except Exception as e:
             st.error("❌ Payment verification failed. Please try again or contact support.")
-            st.write(str(ex))
-    if not paid:
-        st.info("Awaiting payment completion ...")
-
-    # Button always shown at bottom for user to proceed anytime
-    if st.button("➡️ Go to Questions"):
-        st.session_state.page = "questions"
-        import streamlit as st
-        st.experimental_rerun()
+            st.write(str(e))
+    else:
+        st.info("Awaiting payment completion...")
 
 
 # -----------------------------
