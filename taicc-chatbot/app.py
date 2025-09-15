@@ -207,7 +207,13 @@ def payment_screen():
     # Button always shown at bottom for user to proceed anytime
     if st.button("➡️ Go to Questions"):
         st.session_state.page = "questions"
-        st.experimental_rerun()
+        import streamlit as st
+        from streamlit.script_run_context import add_script_run_ctx
+        from streamlit.runtime.scriptrunner.script_runner import RerunException
+        from streamlit.runtime.scriptrunner.script_request_queue import RerunData
+
+        raise RerunException(RerunData(None))
+
 
 
 
