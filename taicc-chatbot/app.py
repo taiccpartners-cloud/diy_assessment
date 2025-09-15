@@ -445,17 +445,21 @@ def results_screen():
 # -----------------------------
 # --- ROUTER ---
 # -----------------------------
-if st.session_state.page == "login":
+params = st.experimental_get_query_params()
+page = params.get("page", ["login"])[0]  # Default to login page
+
+if page == "login":
     login_screen()
-elif st.session_state.page == "payment":
+elif page == "payment":
     payment_screen()
-elif st.session_state.page == "questions":
-    if st.session_state.paid:
-        question_screen()
-    else:
-        payment_screen()
-elif st.session_state.page == "results":
-    if st.session_state.paid:
-        results_screen()
-    else:
-        payment_screen()
+elif page == "questions":
+    # Optionally check payment here if you want to block access
+    # if "payment_id" not in params:
+    #     st.error("Please complete payment first.")
+    question_screen()
+elif page == "results":
+    results_screen()
+else:
+    st.write("Unknown page; showing login.")
+    login_screen()
+
