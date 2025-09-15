@@ -195,9 +195,12 @@ def payment_screen():
             st.success("✅ Payment verified successfully!")
             # Button for user to continue after payment success
             if st.button("➡️ Continue to Assessment"):
-                st.session_state.paid = True
-                st.session_state.page = "questions"
-                st.experimental_rerun()
+            st.session_state.paid = True
+            st.session_state.page = "questions"
+            import streamlit.runtime.scriptrunner.script_runner as sr
+            import streamlit.runtime.scriptrunner.script_request_queue as srq
+            raise sr.RerunException(srq.RerunData(None))
+
         except Exception as ex:
             st.error("❌ Payment verification failed. Please try again or contact support.")
             st.write(str(ex))
@@ -208,13 +211,7 @@ def payment_screen():
     if st.button("➡️ Go to Questions"):
         st.session_state.page = "questions"
         import streamlit as st
-        from streamlit.script_run_context import add_script_run_ctx
-        from streamlit.runtime.scriptrunner.script_runner import RerunException
-        from streamlit.runtime.scriptrunner.script_request_queue import RerunData
-
-        raise RerunException(RerunData(None))
-
-
+        st.experimental_rerun()
 
 
 # -----------------------------
