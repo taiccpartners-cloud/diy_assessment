@@ -113,6 +113,8 @@ if "page" not in st.session_state:
 # -----------------------------
 # --- PAYMENT FUNCTION ---
 # -----------------------------
+import streamlit.components.v1 as components
+
 def payment_screen():
     st.subheader("💳 Payment Required")
     st.write("Please complete the payment of **₹199** to continue to the assessment.")
@@ -144,7 +146,7 @@ def payment_screen():
             "order_id": "{st.session_state['order_id']}",
             "theme": {{ "color": "#3399cc" }},
             "handler": function (response) {{
-                // Send payment success info back to Streamlit
+                // Notify Streamlit that payment succeeded
                 window.parent.postMessage({{"payment_done": true}}, "*");
             }},
             "method": {{
@@ -164,15 +166,7 @@ def payment_screen():
     # Render payment widget
     components.html(payment_html, height=600)
 
-    # Listen for payment success
-    payment_status = st.experimental_get_query_params().get("payment_status", [""])[0]
-
-    if payment_status == "success":
-        st.session_state.paid = True
-        st.session_state.page = "questions"
-        st.experimental_rerun()
-
-    # JS to update query params when payment is done
+    # JS listener that sets query param after payment
     success_js = """
     <script>
     window.addEventListener("message", (event) => {
@@ -185,6 +179,16 @@ def payment_screen():
     </script>
     """
     st.markdown(success_js, unsafe_allow_html=True)
+
+    # If success flag is present in URL, show "Continue" button
+    payment_status = st.experimental_get_query_params().get("payment_status", [""])[0]
+
+    if payment_status == "success":
+        st.success("✅ Payment successful!")
+        if st.button("➡️ Continue to Assessment"):
+            st.session_state.paid = True
+            st.session_state.page = "questions"
+            st.experimental_rerun()
 
 
 # -----------------------------
