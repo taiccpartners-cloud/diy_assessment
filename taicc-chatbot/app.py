@@ -447,16 +447,13 @@ def results_screen():
 # -----------------------------
 
 params = st.experimental_get_query_params()
-page = params.get("page", ["login"])[0]  # Default to login page
+page = params.get("page", ["login"])[0]
 
 if page == "login":
     login_screen()
 elif page == "payment":
     payment_screen()
 elif page == "questions":
-    # Optionally check payment here if you want to block access
-    # if "payment_id" not in params:
-    #     st.error("Please complete payment first.")
     question_screen()
 elif page == "results":
     results_screen()
