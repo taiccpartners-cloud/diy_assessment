@@ -445,21 +445,19 @@ def results_screen():
 # -----------------------------
 # --- ROUTER ---
 # -----------------------------
-def main_router():
-    page = st.session_state.page
-    if page == "login":
-        login_screen()
-    elif page == "payment":
-        payment_screen()
-    elif page == "questions":
+if st.session_state.page == "login":
+    login_screen()
+elif st.session_state.page == "payment":
+    payment_screen()
+elif st.session_state.page == "questions":
+    if st.session_state.paid:
         question_screen()
-    elif page == "results":
+    else:
+        payment_screen()
+elif st.session_state.page == "results":
+    if st.session_state.paid:
         results_screen()
     else:
-        st.session_state.page = "login"
-        st.experimental_rerun()
-
-if __name__ == "__main__":
-    main_router()
+        payment_screen()
 
 
