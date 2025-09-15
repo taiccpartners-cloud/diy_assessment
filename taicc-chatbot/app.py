@@ -445,10 +445,8 @@ def results_screen():
 # -----------------------------
 # --- ROUTER ---
 # -----------------------------
-if __name__ == "__main__":
-    params = st.experimental_get_query_params()
-    page = params.get("page", ["login"])[0]
-
+def main_router():
+    page = st.session_state.page
     if page == "login":
         login_screen()
     elif page == "payment":
@@ -458,9 +456,10 @@ if __name__ == "__main__":
     elif page == "results":
         results_screen()
     else:
-        st.write("Unknown page; showing login.")
-        login_screen()
+        st.session_state.page = "login"
+        st.experimental_rerun()
 
 if __name__ == "__main__":
     main_router()
+
 
