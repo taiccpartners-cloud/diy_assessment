@@ -166,19 +166,20 @@ def payment_screen():
 
     # JS for communicating with Streamlit
     success_js = """
-    <script>
-    window.addEventListener("message", (event) => {
-        if (event.data && event.data.razorpay_payment_id) {
-            const url = new URL(window.location.href);
-            url.searchParams.set("payment_id", event.data.razorpay_payment_id);
-            url.searchParams.set("order_id", event.data.razorpay_order_id);
-            url.searchParams.set("signature", event.data.razorpay_signature);
-            window.location.replace(url.toString());
-        }
-    });
-    </script>
-    """
-    st.markdown(success_js, unsafe_allow_html=True)
+<script>
+window.addEventListener("message", (event) => {
+    if (event.data && event.data.razorpay_payment_id) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("payment_id", event.data.razorpay_payment_id);
+        url.searchParams.set("order_id", event.data.razorpay_order_id);
+        url.searchParams.set("signature", event.data.razorpay_signature);
+        url.searchParams.set("page", "questions");  // <<< This tells the app to go to questions page
+        window.location.replace(url.toString());
+    }
+});
+</script>
+"""
+st.markdown(success_js, unsafe_allow_html=True)
 
     # Read payment query params
     params = st.query_params
@@ -207,6 +208,37 @@ def payment_screen():
     if not paid: 
         st.info("Awaiting payment completion ...")
 
+# After Razorpay widget code inside payment_screen():
+
+params = st.experimental_get_query_params()  # safer form of st.query_params
+current_page = params.get("page", ["payment"])[0]  # default 'payment'
+
+if "payment_id" in params and "order_id" in params and "signature" in params:
+    payment_id = params["payment_id"][0]
+    order_id = params["order_id"][0]
+    signature = params["signature"][0]
+
+    try:
+        razorpay_client.utility.verify_payment_signature({
+            "razorpay_order_id": order_id,
+            "razorpay_payment_id": payment_id,
+            "razorpay_signature": signature
+        })
+        st.success("✅ Payment verified successfully! Redirecting...")
+
+        # Show manual continue link for safety
+        st.markdown(f"[Continue to Assessment]({st.experimental_get_query_params().get('page', ['questions'])[0]})")
+
+        return  # stop showing payment screen
+
+    except Exception as ex:
+        st.error(f"❌ Payment verification failed: {ex}")
+else:
+    # Show payment widget only if still on payment page
+    if current_page != "questions":
+        components.html(payment_html, height=650)
+    else:
+        st.success("Payment successful! Please continue to the assessment.")
 
 
 # -----------------------------
