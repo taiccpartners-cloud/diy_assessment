@@ -193,8 +193,7 @@ def payment_screen():
             })
             paid = True
             st.success("✅ Payment verified successfully!")
-
-            # Button for user to continue
+            # Button for user to continue after payment success
             if st.button("➡️ Continue to Assessment"):
                 st.session_state.paid = True
                 st.session_state.page = "questions"
@@ -205,9 +204,10 @@ def payment_screen():
     if not paid:
         st.info("Awaiting payment completion ...")
 
+    # Button always shown at bottom for user to proceed anytime
     if st.button("➡️ Go to Questions"):
-    st.session_state.page = "questions"
-    st.experimental_rerun()
+        st.session_state.page = "questions"
+        st.experimental_rerun()
 
 
 
