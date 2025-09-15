@@ -20,6 +20,14 @@ RAZORPAY_KEY_SECRET = "WseFgOL3r58nxWdv6g2dyOQa"
 # Initialize Razorpay client
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
+def create_order(amount=199):
+    order = razorpay_client.order.create({
+        "amount": amount * 100,  # Razorpay expects paise
+        "currency": "INR",
+        "payment_capture": 1
+    })
+    return order
+
 # -----------------------------
 # --- CONFIGURATION & SETUP ---
 # -----------------------------
@@ -106,41 +114,65 @@ if "page" not in st.session_state:
 # --- PAYMENT FUNCTION ---
 # -----------------------------
 def payment_screen():
-    st.subheader(" Payment Required")
-    st.write("Please complete the payment of **₹199** to continue to the assessment.")
+    st.title("💳 Complete Your Payment")
+    st.write("Please pay **₹199** to unlock the AI Readiness Assessment.")
 
-    # Create order only once
-    if "order_id" not in st.session_state:
-        order = razorpay_client.order.create({
-            "amount": 19900,   # in paise (₹199)
-            "currency": "INR",
-            "payment_capture": 1
-        })
-        st.session_state["order_id"] = order["id"]
-        st.session_state["order_amount"] = order["amount"]
+    # Create order
+    order = create_order(199)
 
-    # Razorpay Checkout Script
+    # Razorpay embedded checkout
     payment_html = f"""
-    <form>
-      <script src="https://checkout.razorpay.com/v1/checkout.js"
-              data-key="{RAZORPAY_KEY_ID}"
-              data-amount="{st.session_state['order_amount']}"
-              data-currency="INR"
-              data-order_id="{st.session_state['order_id']}"
-              data-buttontext="Pay ₹199"
-              data-name="TAICC Partners"
-              data-description="AI Readiness Assessment"
-              data-theme.color="#3399cc">
-      </script>
-    </form>
+    <html>
+      <head>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+      </head>
+      <body>
+        <button id="rzp-button1" style="padding:12px 24px;
+                                        background-color:#0d6efd;
+                                        color:white;
+                                        border:none;
+                                        border-radius:8px;
+                                        font-size:16px;">
+          Pay ₹199
+        </button>
+        <script>
+            var options = {{
+                "key": "{RAZORPAY_KEY_ID}",
+                "amount": "{order['amount']}",
+                "currency": "INR",
+                "name": "TAICC AI Readiness",
+                "description": "Assessment Access",
+                "order_id": "{order['id']}",
+                "handler": function (response){{
+                    // Callback after successful payment
+                    var streamlitDiv = window.parent.document.querySelector('iframe').parentNode;
+                    var msg = {{
+                        isPaymentDone: true,
+                        paymentId: response.razorpay_payment_id
+                    }};
+                    window.parent.postMessage({{ type: 'streamlit:componentReady', ...msg }}, "*");
+                }},
+                "theme": {{
+                    "color": "#0d6efd"
+                }}
+            }};
+            var rzp1 = new Razorpay(options);
+            document.getElementById('rzp-button1').onclick = function(e){{
+                rzp1.open();
+                e.preventDefault();
+            }}
+        </script>
+      </body>
+    </html>
     """
 
-    st.markdown(payment_html, unsafe_allow_html=True)
+    # Render payment widget
+    st.components.v1.html(payment_html, height=800, scrolling=True)
 
-    st.info("After completing payment, click the button below.")
+    # Button to continue after manual check
     if st.button("✅ I have completed payment"):
-        st.session_state.paid = True
-        st.session_state.page = "questions"
+        st.session_state["payment_done"] = True
+        st.success("Payment confirmed! You can continue.")
 
 
 # -----------------------------
