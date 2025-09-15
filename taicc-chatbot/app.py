@@ -148,10 +148,19 @@ def payment_screen():
             "order_id": "{st.session_state['order_id']}",
             "theme": {{ "color": "#3399cc" }},
             "handler": function (response) {{
-                // After success, reload with ?payment_status=success
+                // ✅ SUCCESS redirect
                 const url = new URL(window.location.href);
                 url.searchParams.set("payment_status", "success");
+                url.searchParams.set("payment_id", response.razorpay_payment_id);
                 window.location.href = url.toString();
+            }},
+            "modal": {{
+                "ondismiss": function() {{
+                    // ❌ FAILURE / DISMISS redirect
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("payment_status", "failed");
+                    window.location.href = url.toString();
+                }}
             }},
             "method": {{
                 "upi": true,
@@ -174,12 +183,14 @@ def payment_screen():
 
     if payment_status == "success":
         st.success("✅ Payment successful!")
-        # Set session_state so next reload goes directly to questions
         st.session_state.paid = True
 
         if st.button("➡️ Continue to Assessment"):
             st.session_state.page = "questions"
             st.rerun()
+
+    elif payment_status == "failed":
+        st.error("❌ Payment failed or cancelled. Please try again.")
 
 
 # -----------------------------
