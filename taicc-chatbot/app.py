@@ -115,46 +115,82 @@ if "page" not in st.session_state:
 # -----------------------------
 import streamlit.components.v1 as components
 
+import streamlit.components.v1 as components
+
 def payment_screen():
-    st.title("💳 Payment for AI Readiness Assessment")
+    st.subheader("💳 Payment Required")
+    st.write("Please complete the payment of **₹199** to continue to the assessment.")
 
-    # Create Razorpay client
-    client = razorpay.Client(auth=(st.secrets["RAZORPAY_KEY_ID"], st.secrets["RAZORPAY_KEY_SECRET"]))
+    # Create Razorpay order (only once per session)
+    if "order_id" not in st.session_state:
+        order = razorpay_client.order.create({
+            "amount": 19900,   # in paise (₹199)
+            "currency": "INR",
+            "payment_capture": 1
+        })
+        st.session_state["order_id"] = order["id"]
+        st.session_state["order_amount"] = order["amount"]
 
-    # Create an order (amount is in paise → 199 INR = 19900)
-    order_amount = 19900  
-    order_currency = "INR"
-    order = client.order.create(dict(amount=order_amount, currency=order_currency, payment_capture="1"))
-
-    # Razorpay Checkout Script
+    # Razorpay Checkout script
     payment_html = f"""
-    <script src="https://checkout.razorpay.com/v1/checkout.js"
-            data-key="{st.secrets['RAZORPAY_KEY_ID']}"
-            data-amount="{order_amount}"
-            data-currency="{order_currency}"
-            data-order_id="{order['id']}"
-            data-buttontext="Pay Now"
-            data-name="TAICC Partners Pvt Ltd"
-            data-description="AI Readiness Assessment Fee"
-            data-prefill.name="{st.session_state.get('user_data', {}).get('Name', '')}"
-            data-prefill.email="{st.session_state.get('user_data', {}).get('Email', '')}"
-            data-theme.color="#0F52BA">
-    </script>
-    <style>.razorpay-payment-button {{ background-color:#0F52BA; color:white; border-radius:8px; padding:10px 20px; }}</style>
+    <html>
+    <head>
+      <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    </head>
+    <body>
+      <script>
+        var options = {{
+            "key": "{RAZORPAY_KEY_ID}",
+            "amount": "{st.session_state['order_amount']}",
+            "currency": "INR",
+            "name": "TAICC Partners",
+            "description": "AI Readiness Assessment",
+            "order_id": "{st.session_state['order_id']}",
+            "theme": {{ "color": "#3399cc" }},
+            "handler": function (response) {{
+                // Notify Streamlit that payment succeeded
+                window.parent.postMessage({{"payment_done": true}}, "*");
+            }},
+            "method": {{
+                "upi": true,
+                "card": true,
+                "netbanking": true,
+                "wallet": true
+            }}
+        }};
+        var rzp1 = new Razorpay(options);
+        rzp1.open();
+      </script>
+    </body>
+    </html>
     """
-    st.markdown(payment_html, unsafe_allow_html=True)
 
-    # ✅ Use st.query_params (instead of experimental)
+    # Render payment widget
+    components.html(payment_html, height=600)
+
+    # JS listener that sets query param after payment
+    success_js = """
+    <script>
+    window.addEventListener("message", (event) => {
+        if (event.data.payment_done) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("payment_status", "success");
+            window.location.href = url.toString();
+        }
+    });
+    </script>
+    """
+    st.markdown(success_js, unsafe_allow_html=True)
+
+    # ✅ Updated query param usage
     payment_status = st.query_params.get("payment_status", "")
 
     if payment_status == "success":
-        st.success("✅ Payment Successful! You can now continue.")
-        if st.button("Continue to Assessment"):
-            st.session_state["payment_done"] = True
+        st.success("✅ Payment successful!")
+        if st.button("➡️ Continue to Assessment"):
+            st.session_state.paid = True
+            st.session_state.page = "questions"
             st.rerun()
-    elif payment_status == "failed":
-        st.error("❌ Payment Failed. Please try again.")
-
 
 # -----------------------------
 # --- UI FUNCTIONS ---
