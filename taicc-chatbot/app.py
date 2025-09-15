@@ -170,15 +170,15 @@ def payment_screen():
             url.searchParams.set("payment_id", event.data.razorpay_payment_id);
             url.searchParams.set("order_id", event.data.razorpay_order_id);
             url.searchParams.set("signature", event.data.razorpay_signature);
-            url.searchParams.set("page", "questions");  // <<< This tells the app to go to questions page
+            url.searchParams.set("page", "questions");
             window.location.replace(url.toString());
         }
     });
     </script>
     """
     st.markdown(success_js, unsafe_allow_html=True)
-
-    # Read payment query params once, safely
+    
+    # Read payment query params
     params = st.query_params
     paid = False
     if "payment_id" in params and "order_id" in params and "signature" in params:
@@ -192,15 +192,19 @@ def payment_screen():
                 "razorpay_signature": signature
             })
             paid = True
-            st.success("✅ Payment verified successfully! Redirecting to assessment ...")
-            st.session_state.paid = True
-            st.session_state.page = "questions"
-            st.experimental_rerun()
+            st.success("✅ Payment verified successfully!")
+
+            # Button for user to continue
+            if st.button("➡️ Continue to Assessment"):
+                st.session_state.paid = True
+                st.session_state.page = "questions"
+                st.experimental_rerun()
         except Exception as ex:
             st.error("❌ Payment verification failed. Please try again or contact support.")
             st.write(str(ex))
     if not paid:
         st.info("Awaiting payment completion ...")
+
 
 
 # -----------------------------
