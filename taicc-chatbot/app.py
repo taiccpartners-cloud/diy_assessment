@@ -118,20 +118,22 @@ import streamlit.components.v1 as components
 import streamlit.components.v1 as components
 
 def payment_screen():
+    import streamlit.components.v1 as components
+
     st.subheader("💳 Payment Required")
     st.write("Please complete the payment of **₹199** to continue to the assessment.")
 
     # Create Razorpay order (only once per session)
     if "order_id" not in st.session_state:
         order = razorpay_client.order.create({
-            "amount": 19900,   # in paise (₹199)
+            "amount": 19900,   # ₹199 in paise
             "currency": "INR",
             "payment_capture": 1
         })
         st.session_state["order_id"] = order["id"]
         st.session_state["order_amount"] = order["amount"]
 
-    # Razorpay Checkout script: send full response (ids + signature) to parent
+    # Razorpay Checkout HTML
     payment_html = f"""
     <html>
     <head>
@@ -168,11 +170,9 @@ def payment_screen():
     </body>
     </html>
     """
-
-    # Render the checkout widget inside an iframe
     components.html(payment_html, height=650)
 
-    # JS in parent page listens for the postMessage and appends params to URL so Streamlit can read them
+    # JS for parent page listening to payment
     success_js = """
     <script>
     window.addEventListener("message", (event) => {
@@ -182,7 +182,6 @@ def payment_screen():
                 url.searchParams.set("payment_id", event.data.razorpay_payment_id);
                 url.searchParams.set("order_id", event.data.razorpay_order_id);
                 url.searchParams.set("signature", event.data.razorpay_signature);
-                // Use replace to avoid polluting history
                 window.location.replace(url.toString());
             }
         } catch (err) {
@@ -193,19 +192,13 @@ def payment_screen():
     """
     st.markdown(success_js, unsafe_allow_html=True)
 
-    # -------------------------
-    # Verify payment server-side
-    # -------------------------
+    # Extract payment parameters from Streamlit query_params
     params = st.query_params
-
-    # Streamlit stores query params values as lists (e.g. { "payment_id": ["pay_..."] })
     if "payment_id" in params and "order_id" in params and "signature" in params:
-        # Extract the first element of each list
+        # Defensive: get first element if lists
         payment_id = params.get("payment_id")
         order_id = params.get("order_id")
         signature = params.get("signature")
-
-        # defensive: ensure we have items and pick first
         if isinstance(payment_id, list):
             payment_id = payment_id[0]
         if isinstance(order_id, list):
@@ -213,33 +206,23 @@ def payment_screen():
         if isinstance(signature, list):
             signature = signature[0]
 
-        st.write("Payment details detected — verifying (debug only):")
-        st.write(f"- payment_id: {payment_id}")
-        st.write(f"- order_id: {order_id}")
-        # don't print signature in production; shown here for debug
-        st.write(f"- signature: {signature}")
-
+        # Payment verification
         try:
-            # This will raise an exception if verification fails
             razorpay_client.utility.verify_payment_signature({
                 "razorpay_order_id": order_id,
                 "razorpay_payment_id": payment_id,
                 "razorpay_signature": signature
             })
-
-            st.success("✅ Payment verified successfully!")
-
-            # Show Continue button (user requested manual Continue after verification)
-            if st.button("➡️ Continue to Assessment"):
-                st.session_state.paid = True
-                st.session_state.page = "questions"
-                st.rerun()
-
+            st.success("✅ Payment verified successfully! Redirecting to assessment ...")
+            # IMMEDIATE REDIRECTION: update session state & rerun
+            st.session_state.paid = True
+            st.session_state.page = "questions"
+            st.rerun()
         except Exception as ex:
-            # Show helpful debug + user message
             st.error("❌ Payment verification failed. Please try again or contact support.")
             st.write("Verification error (debug):")
             st.write(str(ex))
+
 
 # -----------------------------
 # --- UI FUNCTIONS ---
