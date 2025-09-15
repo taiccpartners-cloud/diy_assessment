@@ -8,7 +8,7 @@ from io import BytesIO
 from PIL import Image
 import os
 import requests
-
+import streamlit.components.v1 as components
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import razorpay
@@ -117,7 +117,7 @@ def payment_screen():
     st.subheader("💳 Payment Required")
     st.write("Please complete the payment of **₹199** to continue to the assessment.")
 
-    # Create order only once
+    # Create Razorpay order (only once per session)
     if "order_id" not in st.session_state:
         order = razorpay_client.order.create({
             "amount": 19900,   # in paise (₹199)
@@ -127,65 +127,64 @@ def payment_screen():
         st.session_state["order_id"] = order["id"]
         st.session_state["order_amount"] = order["amount"]
 
-    # Inject Razorpay Checkout
+    # Razorpay Checkout script
     payment_html = f"""
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-    <script>
-        function startPayment() {{
-            var options = {{
-                "key": "{RAZORPAY_KEY_ID}",
-                "amount": "{st.session_state['order_amount']}",
-                "currency": "INR",
-                "name": "TAICC Partners",
-                "description": "AI Readiness Assessment",
-                "order_id": "{st.session_state['order_id']}",
-                "theme": {{ "color": "#3399cc" }},
-                "handler": function (response) {{
-                    // Notify Streamlit after successful payment
-                    const streamlitMessage = {{
-                        isPaymentDone: true,
-                        paymentId: response.razorpay_payment_id
-                    }};
-                    window.parent.postMessage({{ isPaymentDone: true, paymentId: response.razorpay_payment_id }}, "*");
-                }},
-                "method": {{
-                    "upi": true,
-                    "card": true,
-                    "netbanking": true,
-                    "wallet": true
-                }}
-            }};
-            var rzp = new Razorpay(options);
-            rzp.open();
-        }}
-
-        // Auto-open payment popup when user reaches this page
-        startPayment();
-
-        // Listen for postMessage from handler
-        window.addEventListener("message", (event) => {{
-            if (event.data.isPaymentDone) {{
-                // Tell Streamlit via a hidden input
-                const input = document.createElement("input");
-                input.type = "hidden";
-                input.name = "payment_status";
-                input.value = "success";
-                document.body.appendChild(input);
-                input.dispatchEvent(new Event("change", {{ bubbles: true }}));
+    <html>
+    <head>
+      <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    </head>
+    <body>
+      <script>
+        var options = {{
+            "key": "{RAZORPAY_KEY_ID}",
+            "amount": "{st.session_state['order_amount']}",
+            "currency": "INR",
+            "name": "TAICC Partners",
+            "description": "AI Readiness Assessment",
+            "order_id": "{st.session_state['order_id']}",
+            "theme": {{ "color": "#3399cc" }},
+            "handler": function (response) {{
+                // Send payment success info back to Streamlit
+                window.parent.postMessage({{"payment_done": true}}, "*");
+            }},
+            "method": {{
+                "upi": true,
+                "card": true,
+                "netbanking": true,
+                "wallet": true
             }}
-        }});
-    </script>
+        }};
+        var rzp1 = new Razorpay(options);
+        rzp1.open();
+      </script>
+    </body>
+    </html>
     """
 
-    # Render the Razorpay form
-    st.components.v1.html(payment_html, height=600)
+    # Render payment widget
+    components.html(payment_html, height=600)
 
-    # Check if payment completed
-    if st.query_params.get("payment_status") == "success":
+    # Listen for payment success
+    payment_status = st.experimental_get_query_params().get("payment_status", [""])[0]
+
+    if payment_status == "success":
         st.session_state.paid = True
         st.session_state.page = "questions"
         st.experimental_rerun()
 
+    # JS to update query params when payment is done
+    success_js = """
+    <script>
+    window.addEventListener("message", (event) => {
+        if (event.data.payment_done) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("payment_status", "success");
+            window.location.href = url.toString();
+        }
+    });
+    </script>
+    """
+    st.markdown(success_js, unsafe_allow_html=True)
 
 
 # -----------------------------
