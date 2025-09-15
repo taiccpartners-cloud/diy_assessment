@@ -445,6 +445,7 @@ def results_screen():
 # -----------------------------
 # --- ROUTER ---
 # -----------------------------
+
 params = st.experimental_get_query_params()
 page = params.get("page", ["login"])[0]  # Default to login page
 
