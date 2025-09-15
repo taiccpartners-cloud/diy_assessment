@@ -205,6 +205,10 @@ def payment_screen():
     if not paid:
         st.info("Awaiting payment completion ...")
 
+    if st.button("➡️ Go to Questions"):
+    st.session_state.page = "questions"
+    st.experimental_rerun()
+
 
 
 # -----------------------------
