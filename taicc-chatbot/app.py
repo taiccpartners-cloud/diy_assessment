@@ -114,65 +114,78 @@ if "page" not in st.session_state:
 # --- PAYMENT FUNCTION ---
 # -----------------------------
 def payment_screen():
-    st.title("💳 Complete Your Payment")
-    st.write("Please pay **₹199** to unlock the AI Readiness Assessment.")
+    st.subheader("💳 Payment Required")
+    st.write("Please complete the payment of **₹199** to continue to the assessment.")
 
-    # Create order
-    order = create_order(199)
+    # Create order only once
+    if "order_id" not in st.session_state:
+        order = razorpay_client.order.create({
+            "amount": 19900,   # in paise (₹199)
+            "currency": "INR",
+            "payment_capture": 1
+        })
+        st.session_state["order_id"] = order["id"]
+        st.session_state["order_amount"] = order["amount"]
 
-    # Razorpay embedded checkout
+    # Inject Razorpay Checkout
     payment_html = f"""
-    <html>
-      <head>
-        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-      </head>
-      <body>
-        <button id="rzp-button1" style="padding:12px 24px;
-                                        background-color:#0d6efd;
-                                        color:white;
-                                        border:none;
-                                        border-radius:8px;
-                                        font-size:16px;">
-          Pay ₹199
-        </button>
-        <script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+        function startPayment() {{
             var options = {{
                 "key": "{RAZORPAY_KEY_ID}",
-                "amount": "{order['amount']}",
+                "amount": "{st.session_state['order_amount']}",
                 "currency": "INR",
-                "name": "TAICC AI Readiness",
-                "description": "Assessment Access",
-                "order_id": "{order['id']}",
-                "handler": function (response){{
-                    // Callback after successful payment
-                    var streamlitDiv = window.parent.document.querySelector('iframe').parentNode;
-                    var msg = {{
+                "name": "TAICC Partners",
+                "description": "AI Readiness Assessment",
+                "order_id": "{st.session_state['order_id']}",
+                "theme": {{ "color": "#3399cc" }},
+                "handler": function (response) {{
+                    // Notify Streamlit after successful payment
+                    const streamlitMessage = {{
                         isPaymentDone: true,
                         paymentId: response.razorpay_payment_id
                     }};
-                    window.parent.postMessage({{ type: 'streamlit:componentReady', ...msg }}, "*");
+                    window.parent.postMessage({{ isPaymentDone: true, paymentId: response.razorpay_payment_id }}, "*");
                 }},
-                "theme": {{
-                    "color": "#0d6efd"
+                "method": {{
+                    "upi": true,
+                    "card": true,
+                    "netbanking": true,
+                    "wallet": true
                 }}
             }};
-            var rzp1 = new Razorpay(options);
-            document.getElementById('rzp-button1').onclick = function(e){{
-                rzp1.open();
-                e.preventDefault();
+            var rzp = new Razorpay(options);
+            rzp.open();
+        }}
+
+        // Auto-open payment popup when user reaches this page
+        startPayment();
+
+        // Listen for postMessage from handler
+        window.addEventListener("message", (event) => {{
+            if (event.data.isPaymentDone) {{
+                // Tell Streamlit via a hidden input
+                const input = document.createElement("input");
+                input.type = "hidden";
+                input.name = "payment_status";
+                input.value = "success";
+                document.body.appendChild(input);
+                input.dispatchEvent(new Event("change", {{ bubbles: true }}));
             }}
-        </script>
-      </body>
-    </html>
+        }});
+    </script>
     """
 
-    # Render payment widget
-    st.components.v1.html(payment_html, height=800, scrolling=True)
+    # Render the Razorpay form
+    st.components.v1.html(payment_html, height=600)
 
-    # Button to continue after manual check
-    if st.button("✅ I have completed payment"):
-        st.session_state["payment_done"] = True
-        st.success("Payment confirmed! You can continue.")
+    # Check if payment completed
+    if st.query_params.get("payment_status") == "success":
+        st.session_state.paid = True
+        st.session_state.page = "questions"
+        st.experimental_rerun()
+
 
 
 # -----------------------------
