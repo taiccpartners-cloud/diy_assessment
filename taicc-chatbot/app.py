@@ -123,24 +123,22 @@ def payment_screen():
     st.subheader("💳 Payment Required")
     st.write("Please complete the payment of **₹199** to continue to the assessment.")
 
-    # Create Razorpay order (only once per session)
+    # Order creation: safe for reloads
     if "order_id" not in st.session_state:
         order = razorpay_client.order.create({
-            "amount": 19900,   # ₹199 in paise
+            "amount": 19900,
             "currency": "INR",
             "payment_capture": 1
         })
         st.session_state["order_id"] = order["id"]
         st.session_state["order_amount"] = order["amount"]
 
-    # Razorpay Checkout HTML
-    payment_html = f"""
-    <html>
+    # Payment widget
+    payment_html = f"""<html>
     <head>
-      <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-    </head>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script></head>
     <body>
-      <script>
+    <script>
         var options = {{
             "key": "{RAZORPAY_KEY_ID}",
             "amount": "{st.session_state['order_amount']}",
@@ -150,7 +148,6 @@ def payment_screen():
             "order_id": "{st.session_state['order_id']}",
             "theme": {{ "color": "#3399cc" }},
             "handler": function (response) {{
-                // Pass payment info back to the parent window
                 window.parent.postMessage({{
                     "razorpay_payment_id": response.razorpay_payment_id,
                     "razorpay_order_id": response.razorpay_order_id,
@@ -158,70 +155,58 @@ def payment_screen():
                 }}, "*");
             }},
             "method": {{
-                "upi": true,
-                "card": true,
-                "netbanking": true,
-                "wallet": true
+                "upi": true,"card": true, "netbanking": true, "wallet": true
             }}
         }};
         var rzp1 = new Razorpay(options);
         rzp1.open();
-      </script>
-    </body>
-    </html>
+    </script></body></html>
     """
     components.html(payment_html, height=650)
 
-    # JS for parent page listening to payment
+    # JS for communicating with Streamlit
     success_js = """
     <script>
     window.addEventListener("message", (event) => {
-        try {
-            if (event.data && event.data.razorpay_payment_id) {
-                const url = new URL(window.location.href);
-                url.searchParams.set("payment_id", event.data.razorpay_payment_id);
-                url.searchParams.set("order_id", event.data.razorpay_order_id);
-                url.searchParams.set("signature", event.data.razorpay_signature);
-                window.location.replace(url.toString());
-            }
-        } catch (err) {
-            console.error("Error handling payment message:", err);
+        if (event.data && event.data.razorpay_payment_id) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("payment_id", event.data.razorpay_payment_id);
+            url.searchParams.set("order_id", event.data.razorpay_order_id);
+            url.searchParams.set("signature", event.data.razorpay_signature);
+            window.location.replace(url.toString());
         }
     });
     </script>
     """
     st.markdown(success_js, unsafe_allow_html=True)
 
-    # Extract payment parameters from Streamlit query_params
+    # Read payment query params
     params = st.query_params
+    paid = False
     if "payment_id" in params and "order_id" in params and "signature" in params:
-        # Defensive: get first element if lists
-        payment_id = params.get("payment_id")
-        order_id = params.get("order_id")
-        signature = params.get("signature")
-        if isinstance(payment_id, list):
-            payment_id = payment_id[0]
-        if isinstance(order_id, list):
-            order_id = order_id[0]
-        if isinstance(signature, list):
-            signature = signature[0]
-
-        # Payment verification
+        payment_id = params.get("payment_id", [""])
+        order_id = params.get("order_id", [""])
+        signature = params.get("signature", [""])
         try:
             razorpay_client.utility.verify_payment_signature({
                 "razorpay_order_id": order_id,
                 "razorpay_payment_id": payment_id,
                 "razorpay_signature": signature
             })
+            paid = True
             st.success("✅ Payment verified successfully! Redirecting to assessment ...")
-            # IMMEDIATE REDIRECTION: update session state & rerun
+            # Only set state and rerun here—ignore old session state
             st.session_state.paid = True
             st.session_state.page = "questions"
-            st.rerun()
+            st.experimental_rerun()  # st.rerun() also works
         except Exception as ex:
             st.error("❌ Payment verification failed. Please try again or contact support.")
-            st.write("Verification error (debug):")
             st.write(str(ex))
+
+    # Display payment UI if not paid
+    if not paid: 
+        st.info("Awaiting payment completion ...")
+
 
 
 # -----------------------------
