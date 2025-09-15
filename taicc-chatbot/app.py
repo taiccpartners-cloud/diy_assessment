@@ -169,11 +169,10 @@ def payment_screen():
     </html>
     """
 
-    # Render payment widget
     import streamlit.components.v1 as components
     components.html(payment_html, height=600)
 
-    # JS listener that sets query params after payment
+    # JS listener to reload page with payment params
     success_js = """
     <script>
     window.addEventListener("message", (event) => {
@@ -182,7 +181,7 @@ def payment_screen():
             url.searchParams.set("payment_id", event.data.razorpay_payment_id);
             url.searchParams.set("order_id", event.data.razorpay_order_id);
             url.searchParams.set("signature", event.data.razorpay_signature);
-            window.location.href = url.toString();
+            window.location.replace(url.toString());
         }
     });
     </script>
@@ -199,10 +198,12 @@ def payment_screen():
                 "razorpay_signature": params["signature"]
             })
             st.success("✅ Payment verified successfully!")
-            if st.button("➡️ Continue to Assessment"):
-                st.session_state.paid = True
-                st.session_state.page = "questions"
-                st.rerun()
+
+            # 🔑 Auto-advance to questions page
+            st.session_state.paid = True
+            st.session_state.page = "questions"
+            st.rerun()
+
         except:
             st.error("❌ Payment verification failed. Please retry.")
 
