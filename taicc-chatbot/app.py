@@ -445,7 +445,6 @@ def results_screen():
 # -----------------------------
 # --- ROUTER ---
 # -----------------------------
-
 if __name__ == "__main__":
     params = st.experimental_get_query_params()
     page = params.get("page", ["login"])[0]
