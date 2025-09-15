@@ -179,7 +179,7 @@ def payment_screen():
     st.markdown(success_js, unsafe_allow_html=True)
 
     # Read payment query params once, safely
-    params = st.experimental_get_query_params()
+    params = st.query_params
     paid = False
     if "payment_id" in params and "order_id" in params and "signature" in params:
         payment_id = params.get("payment_id", [""])[0]
