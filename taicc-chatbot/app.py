@@ -446,18 +446,22 @@ def results_screen():
 # --- ROUTER ---
 # -----------------------------
 
-params = st.experimental_get_query_params()
-page = params.get("page", ["login"])[0]
+def main_router():
+    params = st.experimental_get_query_params()
+    page = params.get("page", ["login"])[0]
 
-if page == "login":
-    login_screen()
-elif page == "payment":
-    payment_screen()
-elif page == "questions":
-    question_screen()
-elif page == "results":
-    results_screen()
-else:
-    st.write("Unknown page; showing login.")
-    login_screen()
+    if page == "login":
+        login_screen()
+    elif page == "payment":
+        payment_screen()
+    elif page == "questions":
+        question_screen()
+    elif page == "results":
+        results_screen()
+    else:
+        st.write("Unknown page; showing login.")
+        login_screen()
+
+if __name__ == "__main__":
+    main_router()
 
