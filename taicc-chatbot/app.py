@@ -181,7 +181,11 @@ def payment_screen():
     if st.session_state.paid:
         st.success("✅ Payment confirmed!")
         if st.button("➡️ Continue to Assessment"):
+            st.session_state["navigate_to_questions"] = True  # Set a flag instead of direct rerun
+
+        if st.session_state.get("navigate_to_questions", False):
             st.session_state.page = "questions"
+            st.session_state["navigate_to_questions"] = False  # Reset flag
             import streamlit.runtime.scriptrunner.script_runner as sr
             import streamlit.runtime.scriptrunner.script_request_queue as srq
             raise sr.RerunException(srq.RerunData(None))
