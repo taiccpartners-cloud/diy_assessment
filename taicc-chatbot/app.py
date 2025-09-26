@@ -126,13 +126,15 @@ if "page" not in st.session_state:
 # --- PAYMENT FUNCTION ---
 # -----------------------------
 import streamlit.components.v1 as components
+import streamlit.runtime.scriptrunner.script_runner as sr
+import streamlit.runtime.scriptrunner.script_request_queue as srq
 
-import streamlit.components.v1 as components
-
-import time
+def navigate_to_questions():
+    st.session_state.page = "questions"
+    raise sr.RerunException(srq.RerunData(None))
 
 def payment_screen():
-    import streamlit.components.v1 as components
+    import time
 
     st.subheader("💳 Payment Required")
     st.write("Please complete the payment of **₹199** to continue to the assessment.")
@@ -140,7 +142,7 @@ def payment_screen():
     # Create Razorpay order once per session
     if "order_id" not in st.session_state:
         order = razorpay_client.order.create({
-            "amount": 19900,  # amount in paise
+            "amount": 19900,
             "currency": "INR",
             "payment_capture": 1
         })
@@ -167,12 +169,16 @@ def payment_screen():
     """
     components.html(payment_html, height=650)
 
+    # Initialize paid and navigate flags if not present
     if "paid" not in st.session_state:
         st.session_state.paid = False
+    if "navigate" not in st.session_state:
+        st.session_state.navigate = False
 
+    # Poll payment status logic (using your existing check_razorpay_payment_status)
     if not st.session_state.paid:
         with st.spinner("Checking payment status..."):
-            for _ in range(12):  # Poll 12 times (1 minute)
+            for _ in range(12):  # poll for 1 minute (12 x 5 sec)
                 if check_razorpay_payment_status(st.session_state["order_id"]):
                     st.session_state.paid = True
                     break
@@ -180,18 +186,16 @@ def payment_screen():
 
     if st.session_state.paid:
         st.success("✅ Payment confirmed!")
+        # Controlled navigation with flag and safe rerun
         if st.button("➡️ Continue to Assessment"):
-            st.session_state["navigate_to_questions"] = True  # Set a flag instead of direct rerun
-
-        if st.session_state.get("navigate_to_questions", False):
-            st.session_state.page = "questions"
-            st.session_state["navigate_to_questions"] = False  # Reset flag
-            import streamlit.runtime.scriptrunner.script_runner as sr
-            import streamlit.runtime.scriptrunner.script_request_queue as srq
-            raise sr.RerunException(srq.RerunData(None))
+            st.session_state.navigate = True
 
     else:
         st.info("Awaiting payment completion...")
+
+    if st.session_state.navigate:
+        st.session_state.navigate = False
+        navigate_to_questions()
 
 
 
