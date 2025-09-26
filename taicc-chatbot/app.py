@@ -182,7 +182,10 @@ def payment_screen():
         st.success("✅ Payment confirmed!")
         if st.button("➡️ Continue to Assessment"):
             st.session_state.page = "questions"
-            st.experimental_rerun()
+            import streamlit.runtime.scriptrunner.script_runner as sr
+            import streamlit.runtime.scriptrunner.script_request_queue as srq
+            raise sr.RerunException(srq.RerunData(None))
+
     else:
         st.info("Awaiting payment completion...")
 
