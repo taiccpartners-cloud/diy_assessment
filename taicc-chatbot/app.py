@@ -182,7 +182,7 @@ def payment_screen():
     st.markdown(success_js, unsafe_allow_html=True)
 
     # Verify payment from URL query params and navigate immediately
-    params = st.experimental_get_query_params()
+    params = st.query_params
     if "payment_id" in params and "order_id" in params and "signature" in params:
         payment_id = params["payment_id"][0]
         order_id = params["order_id"][0]
