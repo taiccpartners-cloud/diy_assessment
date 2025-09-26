@@ -123,6 +123,7 @@ def payment_screen():
     st.subheader("💳 Payment Required")
     st.write("Please complete the payment of **₹199** to continue to the assessment.")
 
+    # Create Razorpay order only once
     if "order_id" not in st.session_state:
         order = razorpay_client.order.create({
             "amount": 19900,
@@ -132,6 +133,7 @@ def payment_screen():
         st.session_state["order_id"] = order["id"]
         st.session_state["order_amount"] = order["amount"]
 
+    # Razorpay payment widget HTML/JS
     payment_html = f"""
     <html>
     <head><script src="https://checkout.razorpay.com/v1/checkout.js"></script></head>
@@ -146,8 +148,11 @@ def payment_screen():
             "order_id": "{st.session_state['order_id']}",
             "theme": {{ "color": "#3399cc" }},
             "handler": function(response) {{
-                // You can show success message here or capture payment info
-                alert("Payment succeeded. Please verify below.");
+                window.parent.postMessage({{
+                    "razorpay_payment_id": response.razorpay_payment_id,
+                    "razorpay_order_id": response.razorpay_order_id,
+                    "razorpay_signature": response.razorpay_signature
+                }}, "*");
             }},
             "method": {{
                 "upi": true, "card": true, "netbanking": true, "wallet": true
@@ -159,31 +164,44 @@ def payment_screen():
     """
     components.html(payment_html, height=650)
 
-    # Manual inputs to verify payment
-    st.markdown("### Payment Verification (Demo)")
-    payment_id = st.text_input("Payment ID")
-    order_id = st.text_input("Order ID")
-    signature = st.text_input("Signature")
+    # JS listener for payment data - note: no 'page' param set here to avoid conflict
+    success_js = """
+    <script>
+    window.addEventListener("message", (event) => {
+        if (event.data && event.data.razorpay_payment_id) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("payment_id", event.data.razorpay_payment_id);
+            url.searchParams.set("order_id", event.data.razorpay_order_id);
+            url.searchParams.set("signature", event.data.razorpay_signature);
+            // Do NOT set 'page' param here to prevent navigation issues
+            window.location.replace(url.toString());
+        }
+    });
+    </script>
+    """
+    st.markdown(success_js, unsafe_allow_html=True)
 
-    if st.button("Verify Payment"):
-        if payment_id and order_id and signature:
-            try:
-                razorpay_client.utility.verify_payment_signature({
-                    "razorpay_order_id": order_id,
-                    "razorpay_payment_id": payment_id,
-                    "razorpay_signature": signature
-                })
-                st.success("✅ Payment verified successfully!")
-                st.session_state.paid = True
-            except Exception as e:
-                st.error(f"❌ Payment verification failed: {e}")
-
-    if st.session_state.get("paid", False):
-        if st.button("➡️ Continue to Assessment"):
+    # Verify payment from URL query params and navigate immediately
+    params = st.experimental_get_query_params()
+    if "payment_id" in params and "order_id" in params and "signature" in params:
+        payment_id = params["payment_id"][0]
+        order_id = params["order_id"][0]
+        signature = params["signature"][0]
+        try:
+            razorpay_client.utility.verify_payment_signature({
+                "razorpay_order_id": order_id,
+                "razorpay_payment_id": payment_id,
+                "razorpay_signature": signature
+            })
+            st.success("✅ Payment verified successfully!")
+            st.session_state.paid = True
             st.session_state.page = "questions"
             st.experimental_rerun()
+        except Exception as e:
+            st.error("❌ Payment verification failed. Please try again or contact support.")
+            st.write(str(e))
     else:
-        st.info("Awaiting payment completion and verification...")
+        st.info("Awaiting payment completion...")
 
 
 
