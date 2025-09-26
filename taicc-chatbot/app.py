@@ -165,6 +165,7 @@ def payment_screen():
     components.html(payment_html, height=650)
 
     # JS to listen for payment data and update URL params to trigger verification
+    # NOTE: Removed setting 'page' param to avoid conflicts with session state navigation
     success_js = """
     <script>
     window.addEventListener("message", (event) => {
@@ -173,7 +174,7 @@ def payment_screen():
             url.searchParams.set("payment_id", event.data.razorpay_payment_id);
             url.searchParams.set("order_id", event.data.razorpay_order_id);
             url.searchParams.set("signature", event.data.razorpay_signature);
-            url.searchParams.set("page", "questions");  // Keep here to stay on payment for verification
+            // Removed setting page param here to prevent navigation issues
             window.location.replace(url.toString());
         }
     });
@@ -195,9 +196,11 @@ def payment_screen():
             })
             st.success("✅ Payment verified successfully!")
 
-            # Button user clicks to continue after payment
+            # Set paid flag in session state
+            st.session_state.paid = True
+
+            # Show button for user to continue after payment success
             if st.button("➡️ Continue to Assessment"):
-                st.session_state.paid = True
                 st.session_state.page = "questions"
                 st.experimental_rerun()
 
@@ -206,6 +209,7 @@ def payment_screen():
             st.write(str(e))
     else:
         st.info("Awaiting payment completion...")
+
 
 
 # -----------------------------
@@ -413,10 +417,8 @@ def results_screen():
 # --- ROUTER ---
 # -----------------------------
 def main_router():
-    if st.session_state.paid:
-        st.session_state.page = "questions"  # Automatically go to questions if paid
+    page = st.session_state.get("page", "login")
 
-    page = st.session_state.page
     if page == "login":
         login_screen()
     elif page == "payment":
@@ -428,6 +430,7 @@ def main_router():
     else:
         st.session_state.page = "login"
         st.experimental_rerun()
+
 
 
 if __name__ == "__main__":
