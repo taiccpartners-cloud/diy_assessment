@@ -173,7 +173,7 @@ def payment_screen():
             url.searchParams.set("payment_id", event.data.razorpay_payment_id);
             url.searchParams.set("order_id", event.data.razorpay_order_id);
             url.searchParams.set("signature", event.data.razorpay_signature);
-            url.searchParams.set("page", "payment");  // Keep here to stay on payment for verification
+            url.searchParams.set("page", "questions");  // Keep here to stay on payment for verification
             window.location.replace(url.toString());
         }
     });
@@ -413,6 +413,9 @@ def results_screen():
 # --- ROUTER ---
 # -----------------------------
 def main_router():
+    if st.session_state.paid:
+        st.session_state.page = "questions"  # Automatically go to questions if paid
+
     page = st.session_state.page
     if page == "login":
         login_screen()
@@ -425,6 +428,7 @@ def main_router():
     else:
         st.session_state.page = "login"
         st.experimental_rerun()
+
 
 if __name__ == "__main__":
     main_router()
