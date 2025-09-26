@@ -12,6 +12,7 @@ import streamlit.components.v1 as components
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import razorpay
+import time
 
 # Razorpay Test Credentials
 RAZORPAY_KEY_ID = "rzp_test_RGEMU8juHeSLYL"
@@ -19,6 +20,17 @@ RAZORPAY_KEY_SECRET = "WseFgOL3r58nxWdv6g2dyOQa"
 
 # Initialize Razorpay client
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+
+def check_razorpay_payment_status(order_id):
+    try:
+        payments = razorpay_client.order.payments(order_id)
+        for payment in payments.get('items', []):
+            if payment['status'] == 'captured':  # Payment successful
+                return True
+        return False
+    except Exception as e:
+        print(f"Error checking payment status: {e}")
+        return False
 
 def create_order(amount=199):
     order = razorpay_client.order.create({
@@ -117,15 +129,18 @@ import streamlit.components.v1 as components
 
 import streamlit.components.v1 as components
 
+import time
+
 def payment_screen():
     import streamlit.components.v1 as components
 
     st.subheader("💳 Payment Required")
     st.write("Please complete the payment of **₹199** to continue to the assessment.")
 
+    # Create Razorpay order once per session
     if "order_id" not in st.session_state:
         order = razorpay_client.order.create({
-            "amount": 19900,
+            "amount": 19900,  # amount in paise
             "currency": "INR",
             "payment_capture": 1
         })
@@ -144,13 +159,7 @@ def payment_screen():
             "name": "TAICC Partners",
             "description": "AI Readiness Assessment",
             "order_id": "{st.session_state['order_id']}",
-            "theme": {{ "color": "#3399cc" }},
-            "handler": function(response) {{
-                alert("Payment successful! Please copy payment details and paste below for verification.");
-            }},
-            "method": {{
-                "upi": true,"card": true, "netbanking": true, "wallet": true
-            }}
+            "theme": {{ "color": "#3399cc" }}
         }};
         var rzp1 = new Razorpay(options);
         rzp1.open();
@@ -158,31 +167,24 @@ def payment_screen():
     """
     components.html(payment_html, height=650)
 
-    st.markdown("### Paste your payment details here for verification")
+    if "paid" not in st.session_state:
+        st.session_state.paid = False
 
-    payment_id = st.text_input("Payment ID")
-    order_id = st.text_input("Order ID")
-    signature = st.text_input("Signature")
+    if not st.session_state.paid:
+        with st.spinner("Checking payment status..."):
+            for _ in range(12):  # Poll 12 times (1 minute)
+                if check_razorpay_payment_status(st.session_state["order_id"]):
+                    st.session_state.paid = True
+                    break
+                time.sleep(5)
 
-    if st.button("Verify Payment"):
-        if payment_id and order_id and signature:
-            try:
-                razorpay_client.utility.verify_payment_signature({
-                    "razorpay_order_id": order_id,
-                    "razorpay_payment_id": payment_id,
-                    "razorpay_signature": signature
-                })
-                st.success("✅ Payment verified successfully!")
-                st.session_state.paid = True
-            except Exception as e:
-                st.error(f"❌ Payment verification failed: {e}")
-
-    if st.session_state.get("paid", False):
+    if st.session_state.paid:
+        st.success("✅ Payment confirmed!")
         if st.button("➡️ Continue to Assessment"):
             st.session_state.page = "questions"
             st.experimental_rerun()
     else:
-        st.info("Awaiting payment verification...")
+        st.info("Awaiting payment completion...")
 
 
 
@@ -406,8 +408,6 @@ def main_router():
     else:
         st.session_state.page = "login"
         st.experimental_rerun()
-
-
 
 if __name__ == "__main__":
     main_router()
