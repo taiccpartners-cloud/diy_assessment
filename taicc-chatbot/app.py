@@ -170,8 +170,6 @@ def payment_screen():
     # Initialize session flags if not present
     if "paid" not in st.session_state:
         st.session_state.paid = False
-    if "go_to_questions" not in st.session_state:
-        st.session_state.go_to_questions = False
 
     # Poll payment status (implement your check_razorpay_payment_status function)
     if not st.session_state.paid:
@@ -186,14 +184,9 @@ def payment_screen():
         st.success("✅ Payment confirmed!")
         if st.button("➡️ Continue to Assessment"):
             st.session_state.page = "questions"
-            st.session_state.go_to_questions = True
+            st.stop()  # Stop execution here to let Streamlit rerun cleanly next time
     else:
         st.info("Awaiting payment completion...")
-
-    # Trigger rerun safely after session state update
-    if st.session_state.go_to_questions:
-        st.session_state.go_to_questions = False
-        st.experimental_rerun()
 
 
 
