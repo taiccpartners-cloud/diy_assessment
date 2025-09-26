@@ -129,9 +129,9 @@ import streamlit.components.v1 as components
 import time
 import streamlit as st
 
-def navigate_to_questions():
+"""def navigate_to_questions():
     st.session_state.page = "questions"
-    st.experimental_rerun()
+    st.experimental_rerun()"""
 
 def payment_screen():
     st.subheader("💳 Payment Required")
