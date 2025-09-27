@@ -1792,7 +1792,6 @@
             "Do you have a centralized AI innovation team with enterprise-wide oversight?"
         ]
     },
-
     "Public Sector / Government Services": {
         "Tier 1": [
             "Are AI tools used to digitize and route citizen applications?",
@@ -1905,7 +1904,6 @@
             "Is there a centralized AI policy or AI innovation lab under your jurisdiction?"
         ]
     },
-
     "Automotive": {
         "Tier 1": [
             "Are AI models used for autonomous driving and ADAS systems?",
