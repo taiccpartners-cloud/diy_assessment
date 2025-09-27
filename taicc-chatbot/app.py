@@ -32,7 +32,7 @@ def check_razorpay_payment_status(order_id):
         print(f"Error checking payment status: {e}")
         return False
 
-def create_order(amount=199):
+def create_order(amount=99):
     order = razorpay_client.order.create({
         "amount": amount * 100,  # Razorpay expects paise
         "currency": "INR",
@@ -135,12 +135,12 @@ def navigate_to_questions():
 
 def payment_screen():
     st.subheader("💳 Payment Required")
-    st.write("Please complete the payment of **₹199** to continue to the assessment.")
+    st.write("Please complete the payment of **₹99** to continue to the assessment.")
 
     # Create Razorpay order once per session
     if "order_id" not in st.session_state:
         order = razorpay_client.order.create({
-            "amount": 19900,
+            "amount": 9900,
             "currency": "INR",
             "payment_capture": 1
         })
