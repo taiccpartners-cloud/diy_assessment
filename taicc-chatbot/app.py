@@ -15,8 +15,8 @@ import razorpay
 import time
 
 # Razorpay Test Credentials
-RAZORPAY_KEY_ID = "rzp_test_RGEMU8juHeSLYL"
-RAZORPAY_KEY_SECRET = "WseFgOL3r58nxWdv6g2dyOQa"
+RAZORPAY_KEY_ID = "rzp_live_RMHZLGJemmVdVW"
+RAZORPAY_KEY_SECRET = "pICu87X4NLHZtUt11cW73RBn"
 
 # Initialize Razorpay client
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
