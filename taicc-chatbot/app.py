@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from fpdf import FPDF
-import openai
+from huggingface_hub import InferenceClient
 import json
 from io import BytesIO
 from PIL import Image
@@ -50,7 +50,7 @@ with open(file_path, "r") as f:
 
 # Streamlit page config
 st.set_page_config(page_title="TAICC AI Readiness", layout="wide")
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+client = InferenceClient(token=st.secrets["HF_API_KEY"])
 
 # Score mapping and readiness levels
 score_map = {"Not at all": 1, "Slightly": 2, "Moderately": 3, "Very": 4, "Fully": 5}
@@ -258,16 +258,13 @@ def determine_maturity(avg):
 
 
 def generate_professional_summary():
-    # Get average score and maturity
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
 
-    # User details
     user = st.session_state.user_data
     client_name = user.get("Name", "[Client Name]")
     company_name = user.get("Company", "[Company Name]")
 
-    # Prompt for OpenAI
     prompt = f"""
 You are an expert AI consultant. Create a professional AI readiness report for:
 Client: {client_name}
@@ -281,29 +278,25 @@ Include the following sections in clear, business-report style:
 4. Recommendations for Improvement
 5. Conclusion and Call to Action
 
-Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
+Make it concise, professional, and ready to be included in a PDF report. 
+Use bullet points for challenges and recommendations where appropriate.
 """
 
-    # OpenAI ChatCompletion request
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",   # free/low-cost model
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=1500
-        )
-        report_text = response.choices[0].message['content'].strip()
-    except Exception as e:
-        st.error(f"❌ Error generating report: {e}")
-        return maturity, "Error generating report."
+    # Initialize Hugging Face Inference Client
+    hf_client = InferenceClient(token=st.secrets["HF_API_KEY"])
 
-    # Prepend user details to report
-    report_text = f"""Client: {client_name}
-Company: {company_name}
-Email: {user.get('Email', '')}
-Phone: {user.get('Phone', '')}
+    # Choose a free community model for text generation
+    model_id = "tiiuae/falcon-7b-instruct"  # works well for instructions
+    response = hf_client.text_generation(
+        model=model_id,
+        inputs=prompt,
+        parameters={"max_new_tokens": 500, "temperature": 0.7}
+    )
 
-{report_text}"""
+    report_text = response[0]['generated_text'].strip()
+
+    # Prepend user details
+    report_text = f"Client: {client_name}\nCompany: {company_name}\nEmail: {user.get('Email','')}\nPhone: {user.get('Phone','')}\n\n{report_text}"
 
     return maturity, report_text
 
