@@ -258,42 +258,55 @@ def determine_maturity(avg):
 
 
 def generate_professional_summary():
+    # Get average score and maturity
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
 
+    # User details
     user = st.session_state.user_data
     client_name = user.get("Name", "[Client Name]")
     company_name = user.get("Company", "[Company Name]")
 
+    # Prompt for OpenAI
     prompt = f"""
-    You are an expert AI consultant. Create a professional AI readiness report for:
-    Client: {client_name}
-    Company: {company_name}
-    AI Score: {avg_score} ({maturity})
+You are an expert AI consultant. Create a professional AI readiness report for:
+Client: {client_name}
+Company: {company_name}
+AI Score: {avg_score} ({maturity})
 
-    Include the following sections in clear, business-report style:
-    1. Executive Summary
-    2. Current Maturity Level
-    3. Key Weaknesses and Challenges
-    4. Recommendations for Improvement
-    5. Conclusion and Call to Action
+Include the following sections in clear, business-report style:
+1. Executive Summary
+2. Current Maturity Level
+3. Key Weaknesses and Challenges
+4. Recommendations for Improvement
+5. Conclusion and Call to Action
 
-    Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
-    """
+Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
+"""
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",  # free/low-cost model
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.5,
-        max_tokens=1500
-    )
+    # OpenAI ChatCompletion request
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",   # free/low-cost model
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=1500
+        )
+        report_text = response.choices[0].message['content'].strip()
+    except Exception as e:
+        st.error(f"❌ Error generating report: {e}")
+        return maturity, "Error generating report."
 
-    report_text = response.choices[0].message['content'].strip()
+    # Prepend user details to report
+    report_text = f"""Client: {client_name}
+Company: {company_name}
+Email: {user.get('Email', '')}
+Phone: {user.get('Phone', '')}
 
-    # Prepend user details
-    report_text = f"Client: {client_name}\nCompany: {company_name}\nEmail: {user.get('Email','')}\nPhone: {user.get('Phone','')}\n\n{report_text}"
+{report_text}"""
 
     return maturity, report_text
+
 
 
 
