@@ -258,14 +258,22 @@ def determine_maturity(avg):
 
 
 
+from huggingface_hub import InferenceClient
+
+# Initialize Hugging Face client
+hf_client = InferenceClient(api_token=st.secrets["general"]["HF_API_KEY"])
+
 def generate_professional_summary():
+    # Get average score and maturity
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
 
+    # Get user details
     user = st.session_state.user_data
     client_name = user.get("Name", "[Client Name]")
     company_name = user.get("Company", "[Company Name]")
 
+    # Prompt for AI readiness report
     prompt = f"""
     You are an expert AI consultant. Create a professional AI readiness report for:
     Client: {client_name}
@@ -282,21 +290,21 @@ def generate_professional_summary():
     Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
     """
 
-    model_id = "gpt2"  # or any HF text generation model (e.g., "bigscience/bloom" or "google/flan-t5-small")
-
+    # Generate text using Hugging Face Inference API
     response = hf_client.text_generation(
-        model=model_id,
+        model="google/flan-t5-large",  # free/open model
         inputs=prompt,
         parameters={"max_new_tokens": 500, "temperature": 0.7}
     )
 
-    # Hugging Face response is a list of dicts
+    # Hugging Face returns a list of dicts
     report_text = response[0]["generated_text"].strip()
 
     # Prepend user details
     report_text = f"Client: {client_name}\nCompany: {company_name}\nEmail: {user.get('Email','')}\nPhone: {user.get('Phone','')}\n\n{report_text}"
 
     return maturity, report_text
+
 
 
 def download_pdf(report_text, maturity):
