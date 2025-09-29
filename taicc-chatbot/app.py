@@ -50,8 +50,7 @@ with open(file_path, "r") as f:
 
 # Streamlit page config
 st.set_page_config(page_title="TAICC AI Readiness", layout="wide")
-client = InferenceClient(token=st.secrets["HF_API_KEY"])
-
+hf_client = InferenceClient(api_token=st.secrets["HF_API_KEY"])
 # Score mapping and readiness levels
 score_map = {"Not at all": 1, "Slightly": 2, "Moderately": 3, "Very": 4, "Fully": 5}
 readiness_levels = [
@@ -266,43 +265,36 @@ def generate_professional_summary():
     company_name = user.get("Company", "[Company Name]")
 
     prompt = f"""
-You are an expert AI consultant. Create a professional AI readiness report for:
-Client: {client_name}
-Company: {company_name}
-AI Score: {avg_score} ({maturity})
+    You are an expert AI consultant. Create a professional AI readiness report for:
+    Client: {client_name}
+    Company: {company_name}
+    AI Score: {avg_score} ({maturity})
 
-Include the following sections in clear, business-report style:
-1. Executive Summary
-2. Current Maturity Level
-3. Key Weaknesses and Challenges
-4. Recommendations for Improvement
-5. Conclusion and Call to Action
+    Include the following sections in clear, business-report style:
+    1. Executive Summary
+    2. Current Maturity Level
+    3. Key Weaknesses and Challenges
+    4. Recommendations for Improvement
+    5. Conclusion and Call to Action
 
-Make it concise, professional, and ready to be included in a PDF report. 
-Use bullet points for challenges and recommendations where appropriate.
-"""
+    Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
+    """
 
-    # Initialize Hugging Face Inference Client
-    hf_client = InferenceClient(token=st.secrets["HF_API_KEY"])
+    model_id = "gpt2"  # or any HF text generation model (e.g., "bigscience/bloom" or "google/flan-t5-small")
 
-    # Choose a free community model for text generation
-    model_id = "tiiuae/falcon-7b-instruct"  # works well for instructions
     response = hf_client.text_generation(
         model=model_id,
         inputs=prompt,
         parameters={"max_new_tokens": 500, "temperature": 0.7}
     )
 
-    report_text = response[0]['generated_text'].strip()
+    # Hugging Face response is a list of dicts
+    report_text = response[0]["generated_text"].strip()
 
     # Prepend user details
     report_text = f"Client: {client_name}\nCompany: {company_name}\nEmail: {user.get('Email','')}\nPhone: {user.get('Phone','')}\n\n{report_text}"
 
     return maturity, report_text
-
-
-
-
 
 
 def download_pdf(report_text, maturity):
