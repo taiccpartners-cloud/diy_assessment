@@ -50,7 +50,7 @@ with open(file_path, "r") as f:
 
 # Streamlit page config
 st.set_page_config(page_title="TAICC AI Readiness", layout="wide")
-hf_client = InferenceClient(api_token=st.secrets["general"]["HF_API_KEY"])
+hf_client = InferenceClient(api_token=st.secrets["HF_API_KEY"])
 
 
 # Score mapping and readiness levels
@@ -257,11 +257,6 @@ def determine_maturity(avg):
     return "Undefined"
 
 
-
-from huggingface_hub import InferenceClient
-
-# Initialize Hugging Face client
-hf_client = InferenceClient(api_token=st.secrets["general"]["HF_API_KEY"])
 
 def generate_professional_summary():
     # Get average score and maturity
