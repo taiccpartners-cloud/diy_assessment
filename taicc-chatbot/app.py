@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from fpdf import FPDF
-from groq import Groq
+import openai
 import json
 from io import BytesIO
 from PIL import Image
@@ -50,7 +50,7 @@ with open(file_path, "r") as f:
 
 # Streamlit page config
 st.set_page_config(page_title="TAICC AI Readiness", layout="wide")
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Score mapping and readiness levels
 score_map = {"Not at all": 1, "Slightly": 2, "Moderately": 3, "Very": 4, "Fully": 5}
@@ -256,17 +256,20 @@ def determine_maturity(avg):
     return "Undefined"
 
 
+import openai
+import streamlit as st
+
+# Make sure your OpenAI key is in Streamlit secrets
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
 def generate_professional_summary():
-    # Get the average score and maturity
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
 
-    # User info
     user = st.session_state.user_data
     client_name = user.get("Name", "[Client Name]")
     company_name = user.get("Company", "[Company Name]")
 
-    # Prompt for Groq LLM
     prompt = f"""
     You are an expert AI consultant. Create a professional AI readiness report for:
     Client: {client_name}
@@ -280,26 +283,23 @@ def generate_professional_summary():
     4. Recommendations for Improvement
     5. Conclusion and Call to Action
 
-    Make it concise, professional, and ready to be included in a PDF report. 
-    Use bullet points for challenges and recommendations where appropriate.
+    Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
     """
 
-    # Call Groq API correctly
-    try:
-        response = client.completions.create(
-            model="llama-3-8b",  # Groq-supported text model
-            prompt=prompt,
-            max_output_tokens=1000
-        )
-        report_text = response.output_text.strip()
-    except Exception as e:
-        st.error(f"❌ Error generating report: {e}")
-        report_text = "Error generating AI readiness report. Please try again later."
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.5,
+        max_tokens=1500
+    )
+
+    report_text = response.choices[0].message.content.strip()
 
     # Prepend user details to the report
     report_text = f"Client: {client_name}\nCompany: {company_name}\nEmail: {user.get('Email','')}\nPhone: {user.get('Phone','')}\n\n{report_text}"
 
     return maturity, report_text
+
 
 
 
