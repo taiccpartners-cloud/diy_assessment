@@ -281,14 +281,24 @@ def generate_professional_summary():
     """
 
     response = client.chat.completions.create(
-        model="llama-3-8b-chat",  # or "mixtral-8x7b-instruct"
-        messages=[{"role": "user", "content": prompt}]
+        model="llama-3-8b-chat",   # You can also use "mixtral-8x7b-instruct"
+        messages=[{"role": "user", "content": prompt}],
     )
 
-    report_text = response.choices[0].message.content.strip()
+    # Safely extract text from Groq response
+    try:
+        report_text = response.choices[0].message.content.strip()
+    except AttributeError:
+        report_text = response.choices[0].message["content"].strip()
 
     # Prepend user details
-    report_text = f"Client: {client_name}\nCompany: {company_name}\nEmail: {user.get('Email','')}\nPhone: {user.get('Phone','')}\n\n{report_text}"
+    report_text = (
+        f"Client: {client_name}\n"
+        f"Company: {company_name}\n"
+        f"Email: {user.get('Email','')}\n"
+        f"Phone: {user.get('Phone','')}\n\n"
+        f"{report_text}"
+    )
 
     return maturity, report_text
 
