@@ -50,7 +50,9 @@ with open(file_path, "r") as f:
 
 # Streamlit page config
 st.set_page_config(page_title="TAICC AI Readiness", layout="wide")
-hf_client = InferenceClient(api_token=st.secrets["HF_API_KEY"])
+hf_client = InferenceClient(api_token=st.secrets["general"]["HF_API_KEY"])
+
+
 # Score mapping and readiness levels
 score_map = {"Not at all": 1, "Slightly": 2, "Moderately": 3, "Very": 4, "Fully": 5}
 readiness_levels = [
