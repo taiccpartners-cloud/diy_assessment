@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from fpdf import FPDF
-import google.generativeai as genai
+from groq import Groq
 import json
 from io import BytesIO
 from PIL import Image
@@ -50,7 +50,7 @@ with open(file_path, "r") as f:
 
 # Streamlit page config
 st.set_page_config(page_title="TAICC AI Readiness", layout="wide")
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
 # Score mapping and readiness levels
 score_map = {"Not at all": 1, "Slightly": 2, "Moderately": 3, "Very": 4, "Fully": 5}
@@ -259,17 +259,17 @@ def determine_maturity(avg):
 def generate_professional_summary():
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
-    
+
     user = st.session_state.user_data
     client_name = user.get("Name", "[Client Name]")
     company_name = user.get("Company", "[Company Name]")
-    
+
     prompt = f"""
     You are an expert AI consultant. Create a professional AI readiness report for:
     Client: {client_name}
     Company: {company_name}
     AI Score: {avg_score} ({maturity})
-    
+
     Include the following sections in clear, business-report style:
     1. Executive Summary
     2. Current Maturity Level
@@ -279,15 +279,19 @@ def generate_professional_summary():
 
     Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
     """
-    
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(prompt)
-    report_text = response.text.strip()
-    
-    # Optionally, prepend user details to the report
+
+    response = groq_client.chat.completions.create(
+        model="llama-3-8b-chat",  # or "mixtral-8x7b-instruct"
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    report_text = response.choices[0].message.content.strip()
+
+    # Prepend user details
     report_text = f"Client: {client_name}\nCompany: {company_name}\nEmail: {user.get('Email','')}\nPhone: {user.get('Phone','')}\n\n{report_text}"
-    
+
     return maturity, report_text
+
 
 
 def download_pdf(report_text, maturity):
