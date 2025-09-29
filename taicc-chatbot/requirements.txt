@@ -1,7 +1,7 @@
 streamlit
 pandas
 fpdf
-openai
+huggingface-hub
 Pillow
 gspread
 oauth2client
