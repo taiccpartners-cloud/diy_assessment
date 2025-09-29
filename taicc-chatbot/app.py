@@ -281,7 +281,7 @@ Include the following sections in clear, business-report style:
 Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
 """
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini--flash")
     response = model.generate_content(prompt)
     report_text = response.text.strip()
 
