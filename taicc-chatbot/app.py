@@ -50,7 +50,7 @@ with open(file_path, "r") as f:
 
 # Streamlit page config
 st.set_page_config(page_title="TAICC AI Readiness", layout="wide")
-groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
 # Score mapping and readiness levels
 score_map = {"Not at all": 1, "Slightly": 2, "Moderately": 3, "Very": 4, "Fully": 5}
@@ -280,7 +280,7 @@ def generate_professional_summary():
     Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
     """
 
-    response = groq_client.chat.completions.create(
+    response = client.chat.completions.create(
         model="llama-3-8b-chat",  # or "mixtral-8x7b-instruct"
         messages=[{"role": "user", "content": prompt}]
     )
