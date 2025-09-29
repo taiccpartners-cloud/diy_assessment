@@ -284,13 +284,14 @@ def generate_professional_summary():
     Use bullet points for challenges and recommendations where appropriate.
     """
 
-    # Call Groq API
+    # Call Groq API correctly
     try:
-        response = client.chat.completions.create(
-            model="llama-3-8b-chat",  # or any Groq-supported chat model
-            messages=[{"role": "user", "content": prompt}]
+        response = client.completions.create(
+            model="llama-3-8b",  # Groq-supported text model
+            prompt=prompt,
+            max_output_tokens=1000
         )
-        report_text = response.choices[0].message.content.strip()
+        report_text = response.output_text.strip()
     except Exception as e:
         st.error(f"❌ Error generating report: {e}")
         report_text = "Error generating AI readiness report. Please try again later."
