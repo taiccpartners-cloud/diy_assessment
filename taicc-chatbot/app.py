@@ -256,11 +256,6 @@ def determine_maturity(avg):
     return "Undefined"
 
 
-import openai
-import streamlit as st
-
-# Make sure your OpenAI key is in Streamlit secrets
-openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 def generate_professional_summary():
     avg_score = list(st.session_state.section_scores.values())[0]
@@ -287,15 +282,15 @@ def generate_professional_summary():
     """
 
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-3.5-turbo",  # free/low-cost model
         messages=[{"role": "user", "content": prompt}],
         temperature=0.5,
         max_tokens=1500
     )
 
-    report_text = response.choices[0].message.content.strip()
+    report_text = response.choices[0].message['content'].strip()
 
-    # Prepend user details to the report
+    # Prepend user details
     report_text = f"Client: {client_name}\nCompany: {company_name}\nEmail: {user.get('Email','')}\nPhone: {user.get('Phone','')}\n\n{report_text}"
 
     return maturity, report_text
