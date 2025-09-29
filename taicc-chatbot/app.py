@@ -257,13 +257,16 @@ def determine_maturity(avg):
 
 
 def generate_professional_summary():
+    # Get the average score and maturity
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
 
+    # User info
     user = st.session_state.user_data
     client_name = user.get("Name", "[Client Name]")
     company_name = user.get("Company", "[Company Name]")
 
+    # Prompt for Groq LLM
     prompt = f"""
     You are an expert AI consultant. Create a professional AI readiness report for:
     Client: {client_name}
@@ -277,30 +280,26 @@ def generate_professional_summary():
     4. Recommendations for Improvement
     5. Conclusion and Call to Action
 
-    Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
+    Make it concise, professional, and ready to be included in a PDF report. 
+    Use bullet points for challenges and recommendations where appropriate.
     """
 
-    response = client.chat.completions.create(
-        model="llama-3-8b-chat",   # You can also use "mixtral-8x7b-instruct"
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    # Safely extract text from Groq response
+    # Call Groq API
     try:
+        response = client.chat.completions.create(
+            model="llama-3-8b-chat",  # or any Groq-supported chat model
+            messages=[{"role": "user", "content": prompt}]
+        )
         report_text = response.choices[0].message.content.strip()
-    except AttributeError:
-        report_text = response.choices[0].message["content"].strip()
+    except Exception as e:
+        st.error(f"❌ Error generating report: {e}")
+        report_text = "Error generating AI readiness report. Please try again later."
 
-    # Prepend user details
-    report_text = (
-        f"Client: {client_name}\n"
-        f"Company: {company_name}\n"
-        f"Email: {user.get('Email','')}\n"
-        f"Phone: {user.get('Phone','')}\n\n"
-        f"{report_text}"
-    )
+    # Prepend user details to the report
+    report_text = f"Client: {client_name}\nCompany: {company_name}\nEmail: {user.get('Email','')}\nPhone: {user.get('Phone','')}\n\n{report_text}"
 
     return maturity, report_text
+
 
 
 
