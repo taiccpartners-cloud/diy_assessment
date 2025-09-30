@@ -259,9 +259,20 @@ def determine_maturity(avg):
 
 import requests
 
+import os
+import streamlit as st
+from huggingface_hub import InferenceClient
+
+# Initialize once at the top-level of your app
+client = InferenceClient(
+    provider="novita",  # or your HF provider
+    api_key=st.secrets["HF_API_TOKEN"],
+)
+
 def generate_professional_summary():
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
+
     user = st.session_state.user_data
     client_name = user.get("Name", "[Client Name]")
     company_name = user.get("Company", "[Company Name]")
@@ -278,22 +289,18 @@ Include the following sections in clear, business-report style:
 3. Key Weaknesses and Challenges
 4. Recommendations for Improvement
 5. Conclusion and Call to Action
+
+Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
 """
 
-    hf_api_url = "https://api-inference.huggingface.co/models/distilgpt2"
-    headers = {
-        "Authorization": f"Bearer {st.secrets.get('HF_API_TOKEN', '')}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "inputs": prompt,
-        "parameters": {"max_new_tokens": 200, "temperature": 0.7}
-    }
+    completion = client.chat.completions.create(
+        model="deepseek-ai/DeepSeek-V3.2-Exp",
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+    )
 
-    response = requests.post(hf_api_url, headers=headers, json=data)
-    response.raise_for_status()
-    response_json = response.json()
-    generated_text = response_json[0]["generated_text"]
+    generated_text = completion.choices[0].message.content
 
     report_text = (
         f"Client: {client_name}\n"
