@@ -257,22 +257,18 @@ def determine_maturity(avg):
 
 
 
-import requests
-
-import os
 import streamlit as st
 from huggingface_hub import InferenceClient
 
-# Initialize once at the top-level of your app
+# Initialize once at the top-level in your app
 client = InferenceClient(
-    provider="novita",  # or your HF provider
+    provider="huggingface",  # Use "huggingface" as provider for public models
     api_key=st.secrets["HF_API_TOKEN"],
 )
 
 def generate_professional_summary():
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
-
     user = st.session_state.user_data
     client_name = user.get("Name", "[Client Name]")
     company_name = user.get("Company", "[Company Name]")
@@ -293,23 +289,19 @@ Include the following sections in clear, business-report style:
 Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
 """
 
-    completion = client.chat.completions.create(
-        model="deepseek-ai/DeepSeek-V3.2-Exp",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-    )
-
-    generated_text = completion.choices[0].message.content
+    try:
+        completion = client.chat.completions.create(
+            model="gpt2",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        generated_text = completion.choices[0].message.content
+    except Exception as e:
+        st.error(f"Error during API call: {e}")
+        return "Error", "Failed to generate AI report."
 
     report_text = (
         f"Client: {client_name}\n"
-        f"Company: {company_name}\n"
-        f"Email: {user.get('Email', '')}\n"
-        f"Phone: {user.get('Phone', '')}\n\n"
-        f"{generated_text.strip()}"
-    )
-    return maturity, report_text
+        f"Company: {company_name
 
 
 
