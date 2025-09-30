@@ -8,3 +8,4 @@ oauth2client
 pandas
 razorpay
 setuptools
+requests
