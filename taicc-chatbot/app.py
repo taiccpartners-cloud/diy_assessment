@@ -282,7 +282,6 @@ Include the following sections in clear, business-report style:
 
 Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
 """
-
     headers = {
         "Authorization": f"Bearer {st.secrets['HF_API_TOKEN']}",
         "Content-Type": "application/json"
@@ -296,7 +295,7 @@ Make it concise, professional, and ready to be included in a PDF report. Use bul
     }
 
     response = requests.post(
-        "https://api-inference.huggingface.co/models/gpt2",
+        "https://api-inference.huggingface.co/models/distilgpt2",
         headers=headers,
         json=data
     )
@@ -311,7 +310,6 @@ Make it concise, professional, and ready to be included in a PDF report. Use bul
         f"{generated_text.strip()}"
     )
     return maturity, report_text
-
 
 
 
