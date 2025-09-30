@@ -257,6 +257,8 @@ def determine_maturity(avg):
 
 
 
+import requests
+
 def generate_professional_summary():
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
@@ -281,12 +283,34 @@ Include the following sections in clear, business-report style:
 Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
 """
 
-    model = genai.GenerativeModel("gemini--flash")
-    response = model.generate_content(prompt)
-    report_text = response.text.strip()
+    hf_api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct"
+    headers = {
+        "Authorization": f"Bearer {st.secrets['HF_API_TOKEN']}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 300,
+            "temperature": 0.7,
+            "return_full_text": False
+        }
+    }
 
-    report_text = f"Client: {client_name}\nCompany: {company_name}\nEmail: {user.get('Email','')}\nPhone: {user.get('Phone','')}\n\n{report_text}"
+    response = requests.post(hf_api_url, headers=headers, json=data)
+    response.raise_for_status()
+    response_json = response.json()
+    generated_text = response_json[0]["generated_text"]
+
+    report_text = (
+        f"Client: {client_name}\n"
+        f"Company: {company_name}\n"
+        f"Email: {user.get('Email','')}\n"
+        f"Phone: {user.get('Phone','')}\n\n"
+        f"{generated_text.strip()}"
+    )
     return maturity, report_text
+
 
 
 def download_pdf(report_text, maturity):
