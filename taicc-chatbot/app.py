@@ -313,6 +313,7 @@ Make it concise, professional, and ready to be included in a PDF report. Use bul
 
 
 
+
 def download_pdf(report_text, maturity):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
