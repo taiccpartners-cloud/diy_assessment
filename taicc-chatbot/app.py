@@ -257,14 +257,8 @@ def determine_maturity(avg):
 
 
 
+import requests
 import streamlit as st
-from huggingface_hub import InferenceClient
-
-# Initialize once at the top-level in your app
-client = InferenceClient(
-    provider="huggingface",  # Use "huggingface" as provider for public models
-    api_key=st.secrets["HF_API_TOKEN"],
-)
 
 def generate_professional_summary():
     avg_score = list(st.session_state.section_scores.values())[0]
@@ -289,19 +283,34 @@ Include the following sections in clear, business-report style:
 Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
 """
 
-    try:
-        completion = client.chat.completions.create(
-            model="gpt2",
-            messages=[{"role": "user", "content": prompt}],
-        )
-        generated_text = completion.choices[0].message.content
-    except Exception as e:
-        st.error(f"Error during API call: {e}")
-        return "Error", "Failed to generate AI report."
+    headers = {
+        "Authorization": f"Bearer {st.secrets['HF_API_TOKEN']}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 300,
+            "temperature": 0.7
+        }
+    }
+
+    response = requests.post(
+        "https://api-inference.huggingface.co/models/gpt2",
+        headers=headers,
+        json=data
+    )
+    response.raise_for_status()
+    generated_text = response.json()[0]["generated_text"]
 
     report_text = (
         f"Client: {client_name}\n"
-        f"Company: {company_name
+        f"Company: {company_name}\n"
+        f"Email: {user.get('Email', '')}\n"
+        f"Phone: {user.get('Phone', '')}\n\n"
+        f"{generated_text.strip()}"
+    )
+    return maturity, report_text
 
 
 
