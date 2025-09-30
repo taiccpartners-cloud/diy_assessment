@@ -262,7 +262,6 @@ import requests
 def generate_professional_summary():
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
-
     user = st.session_state.user_data
     client_name = user.get("Name", "[Client Name]")
     company_name = user.get("Company", "[Company Name]")
@@ -279,22 +278,16 @@ Include the following sections in clear, business-report style:
 3. Key Weaknesses and Challenges
 4. Recommendations for Improvement
 5. Conclusion and Call to Action
-
-Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
 """
 
-    hf_api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct"
+    hf_api_url = "https://api-inference.huggingface.co/models/distilgpt2"
     headers = {
-        "Authorization": f"Bearer {st.secrets['HF_API_TOKEN']}",
+        "Authorization": f"Bearer {st.secrets.get('HF_API_TOKEN', '')}",
         "Content-Type": "application/json"
     }
     data = {
         "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 300,
-            "temperature": 0.7,
-            "return_full_text": False
-        }
+        "parameters": {"max_new_tokens": 200, "temperature": 0.7}
     }
 
     response = requests.post(hf_api_url, headers=headers, json=data)
@@ -305,8 +298,8 @@ Make it concise, professional, and ready to be included in a PDF report. Use bul
     report_text = (
         f"Client: {client_name}\n"
         f"Company: {company_name}\n"
-        f"Email: {user.get('Email','')}\n"
-        f"Phone: {user.get('Phone','')}\n\n"
+        f"Email: {user.get('Email', '')}\n"
+        f"Phone: {user.get('Phone', '')}\n\n"
         f"{generated_text.strip()}"
     )
     return maturity, report_text
