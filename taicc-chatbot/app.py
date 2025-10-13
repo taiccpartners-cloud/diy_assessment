@@ -304,18 +304,19 @@ from io import BytesIO
 import requests
 from PIL import Image
 import streamlit as st
+import re
 
-def clean_report_text(raw_text):
-    # Remove asterisks and hashtags
-    cleaned = re.sub(r"[\*\#]+", "", raw_text)
+def clean_report_text(text):
+    text = re.sub(r'[\*\#\_`>~-]+', '', text)           # Remove *, #, _, `, >, ~, -
+    text = re.sub(r'\[[^\]]*\]\([^\)]*\)', '', text)    # Remove markdown links [text](url)
+    text = re.sub(r'\n\s*\n+', '\n\n', text)             # Reduce multiple newlines
+    text = re.sub(r'^\s+|\s+$', '', text)                 # Trim leading/trailing spaces
+    text = re.sub(r'\s{2,}', ' ', text)                   # Reduce multiple spaces to single
 
-    # Replace multiple newlines with max two newlines
-    cleaned = re.sub(r"\n\s*\n+", "\n\n", cleaned)
+    # Add spacing before section numbers for clarity, e.g. "1. Section"
+    text = re.sub(r'(\d+\.)', r'\n\n\1', text)
+    return text.strip()
 
-    # Ensure section headings have blank line before, e.g. "1. Executive Summary"
-    cleaned = re.sub(r"(\d\.\s+)", r"\n\n\1", cleaned)
-
-    return cleaned.strip()
 
 def generate_bar_chart(scores):
     plt.figure(figsize=(6, 3))
@@ -395,7 +396,7 @@ def download_pdf(full_report_text, maturity, scores, tier_distribution, score_tr
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, "Executive Summary", ln=True)
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 8, executive_summary)
+    pdf.multi_cell(0, 8, clean_report_text(executive_summary))
 
     # Add bar chart after executive summary
     bar_chart_path = generate_bar_chart(scores)
@@ -407,7 +408,7 @@ def download_pdf(full_report_text, maturity, scores, tier_distribution, score_tr
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, "Detailed Report", ln=True)
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 8, detailed_report.encode('latin-1', 'replace').decode('latin-1'))
+    pdf.multi_cell(0, 8, clean_report_text(detailed_report))
 
 
     # Insert pie chart after detailed report
