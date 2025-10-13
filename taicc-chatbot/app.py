@@ -395,7 +395,8 @@ def download_pdf(full_report_text, maturity, scores, tier_distribution, score_tr
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, "Detailed Report", ln=True)
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 8, detailed_report)
+    pdf.multi_cell(0, 8, detailed_report.encode('latin-1', 'replace').decode('latin-1'))
+
 
     # Insert pie chart after detailed report
     pie_chart_path = generate_pie_chart(tier_distribution)
