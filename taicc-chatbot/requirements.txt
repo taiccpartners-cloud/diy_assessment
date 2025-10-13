@@ -9,3 +9,4 @@ pandas
 razorpay
 setuptools
 requests
+matplotlib
