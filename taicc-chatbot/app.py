@@ -14,6 +14,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 import razorpay
 import time
 
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+
 # Razorpay Test Credentials
 RAZORPAY_KEY_ID = "rzp_test_RGEMU8juHeSLYL"
 RAZORPAY_KEY_SECRET = "WseFgOL3r58nxWdv6g2dyOQa"
@@ -256,10 +258,6 @@ def determine_maturity(avg):
     return "Undefined"
 
 
-
-import requests
-import streamlit as st
-
 def generate_professional_summary():
     avg_score = list(st.session_state.section_scores.values())[0]
     maturity = determine_maturity(avg_score)
@@ -282,25 +280,10 @@ Include the following sections in clear, business-report style:
 
 Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
 """
-    headers = {
-        "Authorization": f"Bearer {st.secrets['HF_API_TOKEN']}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 300,
-            "temperature": 0.7
-        }
-    }
 
-    response = requests.post(
-        "https://api-inference.huggingface.co/models/distilgpt2",
-        headers=headers,
-        json=data
-    )
-    response.raise_for_status()
-    generated_text = response.json()[0]["generated_text"]
+    model = genai.GenerativeModel("gemini-2.5-flash-lite-preview-09-2025")
+    response = model.generate_content(prompt)
+    generated_text = response.text
 
     report_text = (
         f"Client: {client_name}\n"
@@ -310,7 +293,6 @@ Make it concise, professional, and ready to be included in a PDF report. Use bul
         f"{generated_text.strip()}"
     )
     return maturity, report_text
-
 
 
 def download_pdf(report_text, maturity):
