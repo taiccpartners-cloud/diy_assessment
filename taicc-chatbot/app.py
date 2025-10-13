@@ -305,6 +305,18 @@ import requests
 from PIL import Image
 import streamlit as st
 
+def clean_report_text(raw_text):
+    # Remove asterisks and hashtags
+    cleaned = re.sub(r"[\*\#]+", "", raw_text)
+
+    # Replace multiple newlines with max two newlines
+    cleaned = re.sub(r"\n\s*\n+", "\n\n", cleaned)
+
+    # Ensure section headings have blank line before, e.g. "1. Executive Summary"
+    cleaned = re.sub(r"(\d\.\s+)", r"\n\n\1", cleaned)
+
+    return cleaned.strip()
+
 def generate_bar_chart(scores):
     plt.figure(figsize=(6, 3))
     plt.bar(scores.keys(), scores.values(), color='skyblue')
