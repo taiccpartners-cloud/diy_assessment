@@ -306,6 +306,12 @@ from PIL import Image
 import streamlit as st
 import re
 
+def safe_text(text):
+    """Encode text to latin-1 compatible string by replacing unsupported chars."""
+    if isinstance(text, bytes):
+        text = text.decode('utf-8', errors='replace')
+    return text.encode('latin-1', errors='replace').decode('latin-1')
+
 def clean_report_text(text):
     text = re.sub(r'[\*\#\_`>~-]+', '', text)           # Remove *, #, _, `, >, ~, -
     text = re.sub(r'\[[^\]]*\]\([^\)]*\)', '', text)    # Remove markdown links [text](url)
@@ -316,7 +322,6 @@ def clean_report_text(text):
     # Add spacing before section numbers for clarity, e.g. "1. Section"
     text = re.sub(r'(\d+\.)', r'\n\n\1', text)
     return text.strip()
-
 
 def generate_bar_chart(scores):
     plt.figure(figsize=(6, 3))
@@ -396,7 +401,7 @@ def download_pdf(full_report_text, maturity, scores, tier_distribution, score_tr
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, "Executive Summary", ln=True)
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 8, clean_report_text(executive_summary))
+    pdf.multi_cell(0, 8, safe_text(clean_report_text(executive_summary)))
 
     # Add bar chart after executive summary
     bar_chart_path = generate_bar_chart(scores)
@@ -408,7 +413,7 @@ def download_pdf(full_report_text, maturity, scores, tier_distribution, score_tr
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, "Detailed Report", ln=True)
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 8, clean_report_text(detailed_report))
+    pdf.multi_cell(0, 8, safe_text(clean_report_text(detailed_report)))
 
 
     # Insert pie chart after detailed report
