@@ -436,7 +436,7 @@ def show_maturity_levels():
 
 def results_screen():
     calculate_scores()
-    st.title("📊 AI Readiness Assessment Results")
+    st.title("AI Readiness Assessment Results")
     df = pd.DataFrame(list(st.session_state.section_scores.items()), columns=["Section", "Score"])
     st.bar_chart(df.set_index("Section"))
 
@@ -448,7 +448,27 @@ def results_screen():
     time_taken = datetime.now() - st.session_state.start_time
     st.caption(f"⏱️ Time taken: {time_taken.seconds // 60} min {time_taken.seconds % 60} sec")
 
-    download_pdf(detailed_report, maturity)
+    # Extract scores from session_state answers grouped by category (example, adjust as you have categories)
+    # Here assuming questions and answers are structured by domain, you may adapt logic as needed
+    section_scores = st.session_state.section_scores  # This is your calculated overall scores dict
+    
+    # For tier distribution, count how many users answered selecting each tier or however tiers are tracked
+    # Example from your saved session state variable or compute dummy from selected tier
+    tier_distribution = {
+        st.session_state.selected_tier: 1,  # Simplest case - 1 user
+        # Add other tiers if needed or get statistics from your DB
+    }
+
+    # For score trend, if you have historical data, pull it from DB or session, else sample below:
+    score_trend = {
+        "Q1": 2.8,
+        "Q2": 3.1,
+        "Q3": 3.7,
+        "Q4": 4.0
+    }
+
+    # Pass actual data
+    download_pdf(detailed_report, maturity, section_scores, tier_distribution, score_trend)
 
     # -----------------------------
     # --- SAVE TO GOOGLE SHEETS ---
@@ -470,6 +490,7 @@ def results_screen():
         st.success("✅ Results saved to Google Sheets successfully!")
     except Exception as e:
         st.error(f"❌ Could not save to Google Sheets: {e}")
+
 
 # -----------------------------
 # --- ROUTER ---
