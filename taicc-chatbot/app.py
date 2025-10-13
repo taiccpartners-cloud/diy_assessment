@@ -266,21 +266,23 @@ def generate_professional_summary():
     company_name = user.get("Company", "[Company Name]")
 
     prompt = f"""
-You are an expert AI consultant. Create a professional AI readiness report for:
-Client: {client_name}
-Company: {company_name}
-AI Score: {avg_score} ({maturity})
+    You are a senior AI consultant preparing a comprehensive AI readiness report for a corporate client.
 
-Include the following sections in clear, business-report style:
-1. Executive Summary
-2. Current Maturity Level
-3. Key Weaknesses and Challenges
-4. Recommendations for Improvement
-5. Conclusion and Call to Action
+    Client Details:
+    - Name: {client_name}
+    - Company: {company_name}
+    - AI Readiness Score: {avg_score} ({maturity})
 
-Make it concise, professional, and ready to be included in a PDF report. Use bullet points for challenges and recommendations where appropriate.
-"""
+    --- Report Requirements ---
+    1. Executive Summary
+    2. Current Maturity Level
+    3. Detailed Strengths and Weaknesses Analysis
+    4. Actionable Recommendations
+    5. Potential Business Impact
+    6. Conclusion and Call to Action
 
+    Use a formal business tone with bullet points, tables, and clear sections. Justify an investment price of ₹199.
+    """
     model = genai.GenerativeModel("gemini-2.5-flash-lite-preview-09-2025")
     response = model.generate_content(prompt)
     generated_text = response.text
@@ -295,31 +297,78 @@ Make it concise, professional, and ready to be included in a PDF report. Use bul
     return maturity, report_text
 
 
-def download_pdf(report_text, maturity):
+
+import matplotlib.pyplot as plt
+import tempfile
+from fpdf import FPDF
+from io import BytesIO
+import requests
+from PIL import Image
+import streamlit as st
+
+def generate_bar_chart(scores):
+    plt.figure(figsize=(6, 3))
+    plt.bar(scores.keys(), scores.values(), color='skyblue')
+    plt.title("AI Scores by Section")
+    plt.ylim(0, 5)
+    plt.tight_layout()
+    tmpfile = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    plt.savefig(tmpfile.name)
+    plt.close()
+    return tmpfile.name
+
+def generate_pie_chart(tier_dist):
+    plt.figure(figsize=(5, 5))
+    plt.pie(tier_dist.values(), labels=tier_dist.keys(), autopct='%1.1f%%')
+    plt.title("Tier Distribution")
+    tmpfile = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    plt.savefig(tmpfile.name)
+    plt.close()
+    return tmpfile.name
+
+def generate_line_chart(score_trend):
+    plt.figure(figsize=(6, 3))
+    plt.plot(list(score_trend.keys()), list(score_trend.values()), marker='o', linestyle='-')
+    plt.title("AI Readiness Score Trend")
+    plt.ylim(0, 5)
+    plt.tight_layout()
+    tmpfile = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    plt.savefig(tmpfile.name)
+    plt.close()
+    return tmpfile.name
+
+def download_pdf(full_report_text, maturity, scores, tier_distribution, score_trend):
+    # Assuming full_report_text contains Executive Summary followed by detailed report
+    # Split report for demo by keyword - customize as needed
+    split_keyword = "1."
+    executive_summary = full_report_text.split(split_keyword)[0].strip()
+    detailed_report = split_keyword + full_report_text.split(split_keyword)[1].strip()
+
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
 
-    # --- Logo at the top ---
-    logo_url = "https://i.postimg.cc/441ZWPjs/Whats-App-Image-2025-02-20-at-11-29-36.jpg"  # replace with your logo URL
+    # --- Logo ---
+    logo_url = "https://i.postimg.cc/441ZWPjs/Whats-App-Image-2025-02-20-at-11-29-36.jpg"
     response = requests.get(logo_url)
     logo_image = Image.open(BytesIO(response.content))
     logo_path = "temp_logo.png"
     logo_image.save(logo_path)
     pdf.image(logo_path, x=10, y=8, w=40)
 
+    # Title
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "TAICC AI Readiness Assessment Report", ln=True, align="C")
     pdf.ln(15)
 
-    # --- Watermark ---
+    # Watermark
     watermark = logo_image.convert("RGBA").resize((100, 100))
-    alpha = watermark.split()[3].point(lambda p: p * 0.1)  # 10% opacity
+    alpha = watermark.split()[3].point(lambda p: p * 0.1)
     watermark.putalpha(alpha)
     watermark.save("temp_watermark.png")
     pdf.image("temp_watermark.png", x=60, y=100, w=90)
 
-    # --- User Details ---
+    # User Details
     pdf.set_font("Arial", size=12)
     pdf.cell(0, 8, "User Details:", ln=True)
     for k, v in st.session_state.user_data.items():
@@ -329,15 +378,41 @@ def download_pdf(report_text, maturity):
     pdf.cell(0, 8, f"AI Maturity Level: {maturity}", ln=True)
     pdf.ln(10)
 
-    # --- Report Text ---
-    pdf.multi_cell(0, 8, report_text.encode('latin-1', 'replace').decode('latin-1'))
+    # Executive Summary Section
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, "Executive Summary", ln=True)
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 8, executive_summary)
 
-    # --- Footer ---
+    pdf.add_page()
+
+    # Detailed Report Section
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, "Detailed Report", ln=True)
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 8, detailed_report)
+
+    # Add Bar Chart
+    bar_chart_path = generate_bar_chart(scores)
+    pdf.ln(10)
+    pdf.image(bar_chart_path, x=pdf.l_margin, w=pdf.w - 2*pdf.l_margin)
+
+    # Add Pie Chart
+    pdf.add_page()
+    pie_chart_path = generate_pie_chart(tier_distribution)
+    pdf.image(pie_chart_path, x=pdf.l_margin + 30, w=pdf.w - 2*pdf.l_margin - 60)
+
+    # Add Line Chart
+    pdf.ln(10)
+    line_chart_path = generate_line_chart(score_trend)
+    pdf.image(line_chart_path, x=pdf.l_margin, w=pdf.w - 2*pdf.l_margin)
+
+    # Footer
     pdf.ln(10)
     pdf.set_font("Arial", 'I', 10)
     pdf.cell(0, 10, "Report generated by TAICC AI Readiness Assessment Tool", ln=True, align="C")
 
-    # --- Download Button ---
+    # PDF output for Streamlit download button
     pdf_bytes = pdf.output(dest="S").encode("latin-1")
     st.download_button(
         label="Download Full Professional Report (PDF)",
