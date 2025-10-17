@@ -323,6 +323,40 @@ def clean_report_text(text):
     text = re.sub(r'(\d+\.)', r'\n\n\1', text)
     return text.strip()
 
+import smtplib
+from email.message import EmailMessage
+
+def send_report_email(user_email, user_name, pdf_bytes):
+    sender_email = st.secrets["email"]["sender_email"]
+    sender_password = st.secrets["email"]["app_password"]
+
+    subject = "Your TAICC AI Readiness Assessment Report"
+    body = f"""
+Dear {user_name},
+
+Thank you for completing the TAICC AI Readiness Assessment.
+
+Attached is your personalized AI Readiness Report generated using our intelligent assessment system.
+The report provides insights into your organization’s current AI maturity level, strengths, gaps, and recommendations for future improvement.
+
+If you’d like to discuss your results or plan next steps, feel free to reach out to us at wp@taicc.co.
+
+Warm regards,
+TAICC 
+    """
+
+    msg = EmailMessage()
+    msg['From'] = sender_email
+    msg['To'] = user_email
+    msg['Subject'] = subject
+    msg.set_content(body)
+    msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename="TAICC_AI_Readiness_Report.pdf")
+
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        smtp.login(sender_email, sender_password)
+        smtp.send_message(msg)
+
+
 def generate_bar_chart(scores):
     plt.figure(figsize=(6, 3))
     plt.bar(scores.keys(), scores.values(), color='skyblue')
@@ -433,6 +467,26 @@ def download_pdf(full_report_text, maturity, scores, tier_distribution, score_tr
 
     # Streamlit download button
     pdf_bytes = pdf.output(dest="S").encode("latin-1")
+    
+    # Email the PDF
+    try:
+        user_email = st.session_state.user_data.get("Email")
+        user_name = st.session_state.user_data.get("Name")
+        if user_email:
+            send_report_email(user_email, user_name, pdf_bytes)
+            st.success(f"📧 Report sent successfully to {user_email}")
+        else:
+            st.warning("⚠️ No email address found.")
+    except Exception as e:
+        st.error(f"❌ Email sending failed: {e}")
+    
+    st.download_button(
+        label="Download Full Professional Report (PDF)",
+        data=pdf_bytes,
+        file_name="TAICC_AI_Readiness_Report.pdf",
+        mime="application/pdf"
+    )
+    
     st.download_button(
         label="Download Full Professional Report (PDF)",
         data=pdf_bytes,
